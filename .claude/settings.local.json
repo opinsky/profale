@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node *)",
+      "Read(//Users/opinsky/.claude/image-cache/75b7c220-152a-4379-9379-72b719d47b7f/**)"
+    ]
+  }
+}

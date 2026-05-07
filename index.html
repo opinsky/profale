@@ -1,0 +1,1897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Professor Alê — Treinador de Clarinete</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@300;400;500&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design tokens ─────────────────────────────── */
+    :root {
+      --bg:         #0e0b12;
+      --bg-raised:  #161220;
+      --bg-card:    #1c1728;
+      --gold:       #c9a84c;
+      --gold-dim:   #4e3f1e;
+      --gold-soft:  rgba(201,168,76,0.12);
+      --gold-glow:  rgba(201,168,76,0.35);
+      --correct:    #3a8c5c;
+      --correct-bg: rgba(58,140,92,0.18);
+      --correct-glow: rgba(58,140,92,0.45);
+      --wrong:      #c94040;
+      --wrong-bg:   rgba(201,64,64,0.18);
+      --flat:       #4878c9;
+      --flat-bg:    rgba(72,120,201,0.18);
+      --text:       #ede3cf;
+      --text-dim:   #6b6175;
+      --text-muted: #38303f;
+      --serif:      'Cormorant Garamond', Georgia, serif;
+      --mono:       'IBM Plex Mono', 'Courier New', monospace;
+      --body:       'Crimson Pro', Georgia, serif;
+    }
+
+    /* ── Reset ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+    button { cursor: pointer; font-family: inherit; }
+
+    /* ── Grain overlay ─────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: 0.04;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* Ambient glow behind content */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 400px;
+      background: radial-gradient(ellipse, rgba(201,168,76,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* ── App shell ─────────────────────────────────── */
+    .app {
+      width: 100%;
+      max-width: 480px;
+      padding: 0 16px 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Header ────────────────────────────────────── */
+    .header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 22px 0 18px;
+      border-bottom: 1px solid var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .logo-text {
+      font-family: var(--serif);
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--gold);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .mic-btn {
+      background: transparent;
+      border: 1px solid var(--gold-dim);
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+    .mic-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .mic-btn.active {
+      background: var(--gold-soft);
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    /* ── Tab strip ─────────────────────────────────── */
+    .tabs {
+      display: flex;
+      background: var(--bg-raised);
+      border-radius: 20px;
+      padding: 2px;
+      gap: 0;
+    }
+    .tab-btn {
+      padding: 5px 14px;
+      border: none;
+      background: transparent;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-radius: 18px;
+      transition: background 0.2s, color 0.2s;
+    }
+    .tab-btn.active { background: var(--gold); color: #0e0b12; font-weight: 500; }
+
+    /* ── Compact status bar (replaces waveform) ────── */
+    .status-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2px 12px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid var(--text-muted);
+    }
+    .sb-scale {
+      font-family: var(--serif);
+      font-size: clamp(0.95rem, 4vw, 1.35rem);
+      font-weight: 600;
+      color: var(--gold);
+      letter-spacing: 0.01em;
+      line-height: 1;
+    }
+    .sb-status {
+      font-family: var(--body);
+      font-style: italic;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    /* ── Panel layout ──────────────────────────────── */
+    .panel {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* ── Tuner Panel ───────────────────────────────── */
+    #tunerPanel { display: none; }
+    #tunerPanel.visible { display: flex; }
+
+    .note-circle {
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      border: 1.5px solid var(--gold-dim);
+      background: radial-gradient(circle at 38% 32%, var(--bg-card) 0%, var(--bg-raised) 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.3s, box-shadow 0.35s;
+      box-shadow:
+        inset 0 2px 8px rgba(0,0,0,0.4),
+        inset 0 -1px 3px rgba(255,255,255,0.03);
+    }
+    .note-circle.in-tune {
+      border-color: var(--correct);
+      box-shadow: 0 0 40px var(--correct-glow), inset 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .note-circle.sharp {
+      border-color: var(--wrong);
+      box-shadow: 0 0 24px rgba(201,64,64,0.3), inset 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .note-circle.flat {
+      border-color: var(--flat);
+      box-shadow: 0 0 24px rgba(72,120,201,0.3), inset 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .note-name {
+      font-family: var(--serif);
+      font-size: 5rem;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--text);
+    }
+    .note-octave {
+      font-family: var(--mono);
+      font-size: 1.1rem;
+      color: var(--text-dim);
+      margin-top: -4px;
+    }
+    .written-label {
+      font-family: var(--body);
+      font-style: italic;
+      font-size: 0.78rem;
+      color: var(--gold);
+      min-height: 1.2em;
+    }
+
+    /* Tuner bar */
+    .tuner-block { width: 100%; }
+    .tuner-heads {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      margin-bottom: 5px;
+      letter-spacing: 0.05em;
+    }
+    .tuner-track {
+      width: 100%;
+      height: 20px;
+      background: var(--bg-raised);
+      border-radius: 10px;
+      position: relative;
+    }
+    .tuner-track::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 10px;
+      background: linear-gradient(to right,
+        rgba(72,120,201,0.12) 0%, rgba(72,120,201,0.04) 40%,
+        rgba(58,140,92,0.18) 44%, rgba(58,140,92,0.18) 56%,
+        rgba(201,64,64,0.04) 60%, rgba(201,64,64,0.12) 100%);
+    }
+    .tuner-center {
+      position: absolute;
+      left: 50%; top: -3px; bottom: -3px;
+      width: 1.5px;
+      background: var(--gold);
+      transform: translateX(-50%);
+    }
+    .tuner-dot {
+      position: absolute;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      top: 2px; left: 50%;
+      transform: translateX(-50%);
+      background: var(--text-dim);
+      transition: left 0.1s ease, background 0.25s;
+      box-shadow: 0 0 6px rgba(0,0,0,0.5);
+    }
+    .tuner-dot.in-tune { background: var(--correct); box-shadow: 0 0 12px var(--correct-glow); }
+    .tuner-dot.sharp   { background: var(--wrong);   box-shadow: 0 0 10px rgba(201,64,64,0.5); }
+    .tuner-dot.flat    { background: var(--flat);    box-shadow: 0 0 10px rgba(72,120,201,0.5); }
+    .tuner-cents-lbl {
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      margin-top: 5px;
+    }
+
+    /* Info row */
+    .info-row {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+    .info-cell { text-align: center; }
+    .info-lbl {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 2px;
+    }
+    .info-val {
+      font-family: var(--mono);
+      font-size: 0.95rem;
+      color: var(--gold);
+    }
+
+    /* Register pills */
+    .register-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .reg-pill {
+      padding: 4px 11px;
+      border-radius: 16px;
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.06em;
+      border: 1px solid var(--text-muted);
+      color: var(--text-dim);
+      background: transparent;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+    .reg-pill.active { border-color: var(--gold); color: var(--gold); background: var(--gold-soft); }
+
+    /* Signal bar */
+    .signal-row { width: 100%; }
+    .signal-lbl {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .signal-track {
+      width: 100%;
+      height: 3px;
+      background: var(--bg-raised);
+      border-radius: 2px;
+    }
+    .signal-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(to right, var(--gold-dim), var(--gold));
+      border-radius: 2px;
+      transition: width 0.08s;
+    }
+
+    /* Bottom controls (transpose + tuning) */
+    .bottom-controls {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+    }
+    .toggle { position: relative; width: 34px; height: 18px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .tslider {
+      position: absolute; cursor: pointer; inset: 0;
+      background: var(--bg-raised);
+      border: 1px solid var(--text-muted);
+      border-radius: 18px;
+      transition: 0.25s;
+    }
+    .tslider::before {
+      content: '';
+      position: absolute;
+      width: 12px; height: 12px;
+      left: 2px; top: 2px;
+      background: var(--text-dim);
+      border-radius: 50%;
+      transition: 0.25s;
+    }
+    .toggle input:checked + .tslider { border-color: var(--gold); background: var(--gold-soft); }
+    .toggle input:checked + .tslider::before { transform: translateX(16px); background: var(--gold); }
+
+    .tuning-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--text-dim);
+    }
+    .tuning-stepper {
+      display: flex;
+      align-items: center;
+      background: var(--bg-raised);
+      border: 1px solid var(--text-muted);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .tuning-stepper button {
+      background: transparent;
+      border: none;
+      color: var(--gold);
+      width: 24px; height: 24px;
+      font-size: 0.9rem;
+      transition: background 0.15s;
+    }
+    .tuning-stepper button:hover { background: var(--gold-soft); }
+    .tuning-val {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--gold);
+      min-width: 32px;
+      text-align: center;
+    }
+
+    /* History */
+    .history-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      justify-content: center;
+      min-height: 26px;
+    }
+    .hist-chip {
+      padding: 2px 9px;
+      background: var(--bg-raised);
+      border: 1px solid var(--gold-dim);
+      border-radius: 10px;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      animation: chipPop 0.2s ease;
+    }
+    @keyframes chipPop {
+      from { transform: scale(0.75); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+
+    /* ── GAME PANEL ────────────────────────────────── */
+    #gamePanel { display: none; }
+    #gamePanel.visible { display: flex; }
+
+    /* Teacher */
+    .teacher {
+      width: 100%;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--gold-dim);
+      border-radius: 16px;
+      padding: 16px;
+      position: relative;
+    }
+    .teacher::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(201,168,76,0.4), transparent);
+      border-radius: 16px 16px 0 0;
+    }
+    .teacher-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      object-fit: cover;
+      object-position: center top;
+      flex-shrink: 0;
+      border: 2px solid var(--gold-dim);
+      box-shadow: 0 0 0 1px rgba(201,168,76,0.15), 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .teacher-body { flex: 1; min-width: 0; }
+    .teacher-name {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+      opacity: 0.8;
+      margin-bottom: 5px;
+    }
+    .teacher-msg {
+      font-family: var(--body);
+      font-size: 1.05rem;
+      line-height: 1.45;
+      color: var(--text);
+    }
+    .teacher-msg strong { color: var(--gold); font-weight: 600; }
+
+    /* ── Balls arena ───────────────────────────────── */
+    .balls-arena {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .ball-row {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .ball {
+      border-radius: 50%;
+      border: 1.5px solid var(--gold-dim);
+      background:
+        radial-gradient(circle at 38% 30%, #221d2e 0%, #161220 100%);
+      box-shadow:
+        inset 0 3px 6px rgba(0,0,0,0.45),
+        inset 0 -1px 2px rgba(255,255,255,0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: rgba(237,227,207,0.55);
+      transition:
+        border-color 0.2s,
+        background 0.25s,
+        color 0.2s,
+        box-shadow 0.25s;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .ball.sz-lg { width: 52px; height: 52px; font-size: 0.76rem; }
+    .ball.sz-sm { width: 44px; height: 44px; font-size: 0.66rem; }
+
+    .ball.active {
+      border-color: var(--gold);
+      color: var(--gold);
+      background:
+        radial-gradient(circle at 38% 30%, #2e2618 0%, #1e1a10 100%);
+      box-shadow:
+        inset 0 3px 6px rgba(0,0,0,0.4),
+        0 0 0 3px rgba(201,168,76,0.12),
+        0 0 20px rgba(201,168,76,0.25);
+      animation: padPulse 1.2s ease-in-out infinite;
+    }
+    .ball.correct {
+      border-color: var(--correct);
+      background:
+        radial-gradient(circle at 38% 30%, #1d3d2c 0%, #122518 100%);
+      color: var(--correct);
+      box-shadow:
+        inset 0 3px 6px rgba(0,0,0,0.35),
+        0 0 16px var(--correct-glow);
+      animation: none;
+    }
+    .ball.wrong {
+      border-color: var(--wrong) !important;
+      background:
+        radial-gradient(circle at 38% 30%, #3d1d1d 0%, #251212 100%) !important;
+      animation: padShake 0.35s ease !important;
+    }
+
+    @keyframes padPulse {
+      0%,100% { box-shadow: inset 0 3px 6px rgba(0,0,0,0.4), 0 0 0 3px rgba(201,168,76,0.1), 0 0 14px rgba(201,168,76,0.2); }
+      50%     { box-shadow: inset 0 3px 6px rgba(0,0,0,0.4), 0 0 0 4px rgba(201,168,76,0.18), 0 0 28px rgba(201,168,76,0.4); }
+    }
+    @keyframes padShake {
+      0%   { transform: translateX(0); }
+      18%  { transform: translateX(-6px); }
+      38%  { transform: translateX(6px); }
+      58%  { transform: translateX(-4px); }
+      78%  { transform: translateX(4px); }
+      100% { transform: translateX(0); }
+    }
+
+    /* ── Game option bar ───────────────────────────── */
+    .game-bar {
+      width: 100%;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-grp {
+      display: flex;
+      background: var(--bg-raised);
+      border: 1px solid var(--text-muted);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+    .gopt {
+      padding: 5px 12px;
+      font-family: var(--mono);
+      font-size: 0.66rem;
+      letter-spacing: 0.06em;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      transition: background 0.15s, color 0.15s;
+    }
+    .gopt.active { background: var(--gold-soft); color: var(--gold); font-weight: 500; }
+    .ball.sz-xs { width: 36px; height: 36px; font-size: 0.56rem; }
+    .play-btn {
+      background: var(--gold);
+      color: #0e0b12;
+      border: none;
+      padding: 7px 18px;
+      border-radius: 18px;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .play-btn:hover { background: #ddb85c; transform: scale(1.04); }
+
+    /* ── Utility ───────────────────────────────────── */
+    .t-only { }
+    .t-only.hidden { display: none !important; }
+    .hidden { display: none !important; }
+    .divider {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--text-muted), transparent);
+    }
+
+    /* ── Mode bar ──────────────────────────────────── */
+    .mode-bar {
+      width: 100%;
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .mode-btn {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid var(--text-muted);
+      border-radius: 14px;
+      background: transparent;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      transition: border-color 0.18s, color 0.18s, background 0.18s;
+    }
+    .mode-btn.active {
+      background: var(--gold-soft);
+      border-color: var(--gold);
+      color: var(--gold);
+      font-weight: 500;
+    }
+    .mode-btn:hover:not(.active) { border-color: var(--text-dim); color: var(--text); }
+    .settings-btn {
+      flex: 0 0 auto;
+      width: 34px;
+      padding: 6px 0;
+      font-size: 0.85rem;
+    }
+    .settings-btn.open {
+      background: var(--gold-soft);
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    /* ── Filter bar ────────────────────────────────── */
+    .filter-bar {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      justify-content: center;
+    }
+    .filter-btn {
+      padding: 4px 10px;
+      border: 1px solid var(--text-muted);
+      border-radius: 12px;
+      background: transparent;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.06em;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      cursor: pointer;
+    }
+    .filter-btn.active {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: var(--gold-soft);
+    }
+
+    /* ── Practice picker ───────────────────────────── */
+    .practice-pick {
+      width: 100%;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .practice-select {
+      flex: 1;
+      background: var(--bg-raised);
+      border: 1px solid var(--text-muted);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      padding: 6px 10px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .practice-select:focus { border-color: var(--gold); }
+    .practice-select option, .practice-select optgroup { background: var(--bg-card); }
+
+    /* ── Settings panel ────────────────────────────── */
+    .settings-panel {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--gold-dim);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .settings-section-title {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--gold);
+      opacity: 0.7;
+    }
+    .chord-filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Header ─────────────────────────────────────── -->
+  <header class="header">
+    <div class="logo">
+      <span class="logo-text">Professor Alê</span>
+    </div>
+    <div class="header-right">
+      <button class="mic-btn" id="startBtn">Ligar Microfone</button>
+      <div class="tabs">
+        <button class="tab-btn" data-tab="tuner">Afinador</button>
+        <button class="tab-btn active" data-tab="game">Jogo</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Compact status bar ─────────────────────────── -->
+  <div class="status-bar">
+    <span class="sb-scale" id="sbScaleName"></span>
+    <span class="sb-status" id="statusText">Ligue o microfone para começar</span>
+  </div>
+
+  <!-- ══════════ TUNER PANEL ══════════ -->
+  <section id="tunerPanel" class="panel">
+
+    <!-- Note circle -->
+    <div class="note-circle t-only" id="noteCircle">
+      <div class="note-name"   id="tunerNoteName">—</div>
+      <div class="note-octave" id="tunerNoteOct"></div>
+    </div>
+
+    <!-- Info row -->
+    <div class="info-row t-only">
+      <div class="info-cell">
+        <div class="info-lbl">Frequência</div>
+        <div class="info-val" id="freqVal">— Hz</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-lbl">Desvio</div>
+        <div class="info-val" id="centsVal">— ¢</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-lbl">Precisão</div>
+        <div class="info-val" id="confVal">—%</div>
+      </div>
+    </div>
+
+    <!-- Tuner bar -->
+    <div class="tuner-block t-only">
+      <div class="tuner-heads">
+        <span>♭ BEMOL −50¢</span>
+        <span>AFINADO</span>
+        <span>+50¢ SUSTENIDO ♯</span>
+      </div>
+      <div class="tuner-track">
+        <div class="tuner-center"></div>
+        <div class="tuner-dot" id="tunerDot"></div>
+      </div>
+      <div class="tuner-cents-lbl" id="tunerCents">—</div>
+    </div>
+
+    <!-- Register -->
+    <div class="register-row t-only" id="registerWrap">
+      <div class="reg-pill" data-reg="chalumeau">Chalumeau</div>
+      <div class="reg-pill" data-reg="throat">Garganta</div>
+      <div class="reg-pill" data-reg="clarion">Clarion</div>
+      <div class="reg-pill" data-reg="altissimo">Altíssimo</div>
+    </div>
+
+    <!-- Signal -->
+    <div class="signal-row t-only">
+      <div class="signal-lbl">Nível de entrada</div>
+      <div class="signal-track">
+        <div class="signal-bar" id="signalBar"></div>
+      </div>
+    </div>
+
+    <!-- Bottom controls -->
+    <div class="bottom-controls t-only">
+      <div class="toggle-row">
+        <label class="toggle">
+          <input type="checkbox" id="transposeChk">
+          <div class="tslider"></div>
+        </label>
+        <span>Mostrar nota soando</span>
+      </div>
+      <div class="tuning-row">
+        <span>A4 =</span>
+        <div class="tuning-stepper">
+          <button id="tuneDown">−</button>
+          <div class="tuning-val" id="tuneVal">440</div>
+          <button id="tuneUp">+</button>
+        </div>
+        <span>Hz</span>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="history-row t-only" id="histWrap"></div>
+
+  </section>
+
+  <!-- ══════════ GAME PANEL ══════════ -->
+  <section id="gamePanel" class="panel">
+
+    <!-- Teacher (Alê) -->
+    <div class="teacher">
+      <img class="teacher-avatar" src="ale.png" alt="Professor Alê">
+      <div class="teacher-body">
+        <div class="teacher-name">Alê</div>
+        <div class="teacher-msg" id="teacherMsg">
+          Selecione um modo e pressione <strong>Nova Escala</strong> para começar!
+        </div>
+      </div>
+    </div>
+
+    <!-- Balls -->
+    <div class="balls-arena" id="ballsWrap"></div>
+
+    <!-- Mode bar -->
+    <div class="mode-bar">
+      <button class="mode-btn active" data-gmode="random">Aleatório</button>
+      <button class="mode-btn"        data-gmode="practice">Praticar</button>
+      <button class="mode-btn"        data-gmode="chord">Acordes</button>
+      <button class="mode-btn settings-btn" id="settingsBtn" title="Configurações de acordes">⚙</button>
+    </div>
+
+    <!-- Scale filter toggles (random + practice modes) -->
+    <div class="filter-bar" id="filterBar">
+      <button class="filter-btn active" data-filter="maj">Maior</button>
+      <button class="filter-btn active" data-filter="nat">Men Nat</button>
+      <button class="filter-btn active" data-filter="har">Men Har</button>
+      <button class="filter-btn active" data-filter="mel">Men Mel</button>
+      <button class="filter-btn"        data-filter="dorian">Dórico</button>
+      <button class="filter-btn"        data-filter="phrygian">Frígio</button>
+      <button class="filter-btn"        data-filter="lydian">Lídio</button>
+      <button class="filter-btn"        data-filter="mixo">Mixolídio</button>
+      <button class="filter-btn"        data-filter="locrian">Lócrio</button>
+    </div>
+
+    <!-- Practice picker (practice mode only) -->
+    <div class="practice-pick hidden" id="practicePick">
+      <select id="practiceSelect" class="practice-select"></select>
+      <button class="play-btn" id="startPracticeBtn">▶ Tocar</button>
+    </div>
+
+    <!-- Settings panel (chord type toggles, toggled by ⚙ button) -->
+    <div class="settings-panel hidden" id="settingsPanel">
+      <div class="settings-section-title">Tipos de acorde</div>
+      <div class="chord-filter-row">
+        <button class="filter-btn active" data-chord="maj">Maior</button>
+        <button class="filter-btn active" data-chord="min">Menor</button>
+        <button class="filter-btn active" data-chord="dim">Dim</button>
+        <button class="filter-btn active" data-chord="aug">Aug</button>
+        <button class="filter-btn active" data-chord="dom7">Dom 7</button>
+        <button class="filter-btn active" data-chord="maj7">Maior 7</button>
+        <button class="filter-btn active" data-chord="min7">Menor 7</button>
+        <button class="filter-btn active" data-chord="dim7">Dim 7</button>
+      </div>
+    </div>
+
+    <!-- Bottom game options bar -->
+    <div class="game-bar">
+      <div class="btn-grp" id="octaveGrp">
+        <button class="gopt active" data-oct="1">1 oct</button>
+        <button class="gopt"        data-oct="2">2 oct</button>
+      </div>
+      <div class="btn-grp" id="dirGrp">
+        <button class="gopt"        data-dir="up">↑</button>
+        <button class="gopt active" data-dir="updown">↑↓</button>
+      </div>
+      <div class="btn-grp" id="startGrp">
+        <button class="gopt active" data-start="root">Tônica</button>
+        <button class="gopt"        data-start="lowe">Mi grave</button>
+      </div>
+      <div class="btn-grp">
+        <button class="gopt active" data-mode="easy">Fácil</button>
+        <button class="gopt"        data-mode="hard">Difícil</button>
+      </div>
+      <button class="play-btn" id="newScaleBtn">▶ Nova Escala</button>
+    </div>
+
+  </section>
+
+</div><!-- /.app -->
+
+<script>
+// ═════════════════════════════════════════════════════════════
+//  Audio constants
+// ═════════════════════════════════════════════════════════════
+const BUFFER_SIZE   = 2048;
+const YIN_THRESH    = 0.12;
+const SILENCE_RMS   = 0.012;
+const MIN_CONF      = 0.80;
+const STABLE_NEEDED = 3;
+const CLR_MIN_HZ    = 130;
+const CLR_MAX_HZ    = 2600;
+
+const NOTE_FLAT = ['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'];
+
+const REGISTERS = [
+  { key: 'chalumeau', min: 130,  max: 280  },
+  { key: 'throat',    min: 280,  max: 430  },
+  { key: 'clarion',   min: 430,  max: 1120 },
+  { key: 'altissimo', min: 1120, max: 2600 },
+];
+
+// ─────────────────────────────────────────────────────────────
+//  Pre-allocated DSP buffers
+// ─────────────────────────────────────────────────────────────
+const audioBuf = new Float32Array(BUFFER_SIZE);
+const yinBuf   = new Float32Array(Math.floor(BUFFER_SIZE / 2));
+
+// ═════════════════════════════════════════════════════════════
+//  YIN Pitch Detection (de Cheveigné & Kawahara, 2002)
+// ═════════════════════════════════════════════════════════════
+function yinDetect(buffer, sampleRate) {
+  const half = yinBuf.length;
+  yinBuf.fill(0);
+
+  // Step 1 – Difference function
+  for (let tau = 1; tau < half; tau++) {
+    for (let i = 0; i < half; i++) {
+      const d = buffer[i] - buffer[i + tau];
+      yinBuf[tau] += d * d;
+    }
+  }
+  // Step 2 – Cumulative mean normalised difference
+  yinBuf[0] = 1;
+  let runSum = 0;
+  for (let tau = 1; tau < half; tau++) {
+    runSum += yinBuf[tau];
+    yinBuf[tau] = runSum > 0 ? (yinBuf[tau] * tau) / runSum : 1;
+  }
+  // Step 3 – Absolute threshold
+  let tau = 2;
+  while (tau < half) {
+    if (yinBuf[tau] < YIN_THRESH) {
+      while (tau + 1 < half && yinBuf[tau + 1] < yinBuf[tau]) tau++;
+      break;
+    }
+    tau++;
+  }
+  if (tau >= half || yinBuf[tau] >= YIN_THRESH) return null;
+
+  // Step 4 – Parabolic interpolation
+  const x0 = tau > 0 ? tau - 1 : tau;
+  const x2 = tau + 1 < half ? tau + 1 : tau;
+  let refined = tau;
+  if (x0 !== tau && x2 !== tau) {
+    const a = yinBuf[x0], b = yinBuf[tau], c = yinBuf[x2];
+    const denom = 2 * (2 * b - c - a);
+    if (denom !== 0) refined = tau + (c - a) / denom;
+  }
+
+  return { freq: sampleRate / refined, conf: 1 - yinBuf[tau] };
+}
+
+function rms(buf) {
+  let s = 0;
+  for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
+  return Math.sqrt(s / buf.length);
+}
+
+// ═════════════════════════════════════════════════════════════
+//  Music helpers
+// ═════════════════════════════════════════════════════════════
+let A4 = 440;
+
+function freqToNote(freq) {
+  const semis   = 12 * Math.log2(freq / A4);
+  const rounded = Math.round(semis);
+  const cents   = Math.round((semis - rounded) * 100);
+  const midi    = 69 + rounded;
+  const idx     = ((midi % 12) + 12) % 12;
+  const oct     = Math.floor(midi / 12) - 1;
+  return { name: NOTE_FLAT[idx], oct, cents, midi, idx };
+}
+
+function bbWritten(concertMidi) {
+  const wMidi = concertMidi + 2;
+  const wIdx  = ((wMidi % 12) + 12) % 12;
+  const wOct  = Math.floor(wMidi / 12) - 1;
+  return { name: NOTE_FLAT[wIdx], oct: wOct, idx: wIdx };
+}
+
+function getRegister(freq) {
+  return REGISTERS.find(r => freq >= r.min && freq < r.max)?.key ?? null;
+}
+
+// ═════════════════════════════════════════════════════════════
+//  App state
+// ═════════════════════════════════════════════════════════════
+let audioCtx, analyser, srcNode, rafId;
+let listening    = false;
+let transposeOn  = false;
+let lastNoteKey  = null;
+let stableFrames = 0;
+let smoothFreq   = null;
+let smoothCents  = null;
+let noteHistory  = [];
+const MAX_HIST   = 10;
+
+// ═════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════
+//  DOM helpers
+// ═════════════════════════════════════════════════════════════
+function setStatus(msg) {
+  document.getElementById('statusText').textContent = msg;
+}
+
+function resetDisplay() {
+  document.getElementById('tunerNoteName').textContent = '—';
+  document.getElementById('tunerNoteOct').textContent  = '';
+  document.getElementById('freqVal').textContent       = '— Hz';
+  document.getElementById('centsVal').textContent      = '— ¢';
+  document.getElementById('confVal').textContent       = '—%';
+  document.getElementById('tunerCents').textContent    = '—';
+  document.getElementById('noteCircle').className      = 'note-circle t-only';
+  const dot = document.getElementById('tunerDot');
+  dot.className  = 'tuner-dot';
+  dot.style.left = '50%';
+  document.querySelectorAll('.reg-pill').forEach(p => p.classList.remove('active'));
+}
+
+function pushHistory(key) {
+  if (noteHistory[noteHistory.length - 1] === key) return;
+  noteHistory.push(key);
+  if (noteHistory.length > MAX_HIST) noteHistory.shift();
+  document.getElementById('histWrap').innerHTML =
+    noteHistory.map(n => `<div class="hist-chip">${n}</div>`).join('');
+}
+
+// ═════════════════════════════════════════════════════════════
+//  Main audio → display loop
+// ═════════════════════════════════════════════════════════════
+function tick() {
+  analyser.getFloatTimeDomainData(audioBuf);
+
+  const level = rms(audioBuf);
+  document.getElementById('signalBar').style.width = Math.min(100, level * 700) + '%';
+
+  if (level < SILENCE_RMS) {
+    resetDisplay();
+    stableFrames = 0;
+    smoothFreq = null;
+    smoothCents = null;
+    if (gs.active) { gs.wrongCandidate = { idx: -1, frames: 0 }; gs.lastCorrectKey = null; }
+    rafId = requestAnimationFrame(tick);
+    return;
+  }
+
+  const result = yinDetect(audioBuf, audioCtx.sampleRate);
+
+  if (!result || result.conf < MIN_CONF ||
+      result.freq < CLR_MIN_HZ || result.freq > CLR_MAX_HZ) {
+    if (stableFrames > 0) stableFrames--;
+    rafId = requestAnimationFrame(tick);
+    return;
+  }
+
+  const note    = freqToNote(result.freq);
+  const written = bbWritten(note.midi);
+  const noteKey = `${written.name}${written.oct}`;
+
+  if (noteKey === lastNoteKey) {
+    stableFrames = Math.min(stableFrames + 1, STABLE_NEEDED + 10);
+  } else {
+    stableFrames = 0;
+    lastNoteKey  = noteKey;
+    smoothFreq   = null;
+    smoothCents  = null;
+  }
+
+  if (stableFrames < STABLE_NEEDED) {
+    rafId = requestAnimationFrame(tick);
+    return;
+  }
+
+  // Smooth freq / cents
+  const alpha = 0.25;
+  smoothFreq  = smoothFreq  === null ? result.freq  : smoothFreq  * (1-alpha) + result.freq  * alpha;
+  smoothCents = smoothCents === null ? note.cents    : smoothCents * (1-alpha) + note.cents   * alpha;
+  const dc    = Math.round(smoothCents);
+
+  // Tuning class
+  const absC     = Math.abs(dc);
+  const tuneClass = absC <= 10 ? 'in-tune' : (dc > 0 ? 'sharp' : 'flat');
+
+  // Tuner panel
+  document.getElementById('tunerNoteName').textContent = written.name;
+  document.getElementById('tunerNoteOct').textContent  = written.oct;
+  document.getElementById('noteCircle').className      = 'note-circle t-only ' + tuneClass;
+  document.getElementById('freqVal').textContent       = smoothFreq.toFixed(1) + ' Hz';
+  document.getElementById('centsVal').textContent      = (dc >= 0 ? '+' : '') + dc + ' ¢';
+  document.getElementById('confVal').textContent       = Math.round(result.conf * 100) + '%';
+
+  const pct = 50 + (dc / 50) * 40;
+  const dot = document.getElementById('tunerDot');
+  dot.style.left = Math.max(4, Math.min(94, pct)) + '%';
+  dot.className  = 'tuner-dot ' + tuneClass;
+  document.getElementById('tunerCents').textContent =
+    tuneClass === 'in-tune' ? '✓ Afinado'
+    : (dc > 0 ? `+${dc} ¢ agudo` : `${dc} ¢ grave`);
+
+  const reg = getRegister(result.freq);
+  document.querySelectorAll('.reg-pill').forEach(p =>
+    p.classList.toggle('active', p.dataset.reg === reg));
+
+  pushHistory(noteKey);
+
+  // Game
+  if (gs.active && !gs.completed) gameCheckNote(written.idx);
+
+  rafId = requestAnimationFrame(tick);
+}
+
+// ═════════════════════════════════════════════════════════════
+//  Start / Stop
+// ═════════════════════════════════════════════════════════════
+async function startListening() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 }
+    });
+    audioCtx = new AudioContext();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize               = BUFFER_SIZE;
+    analyser.smoothingTimeConstant = 0;
+    srcNode  = audioCtx.createMediaStreamSource(stream);
+    srcNode.connect(analyser);
+
+    listening = true;
+    const btn = document.getElementById('startBtn');
+    btn.textContent = 'Parar';
+    btn.classList.add('active');
+    setStatus('Ouvindo… toque uma nota!');
+    rafId = requestAnimationFrame(tick);
+  } catch (err) {
+    setStatus('Acesso ao microfone negado — permita e recarregue.');
+    console.error(err);
+  }
+}
+
+function stopListening() {
+  if (rafId)    cancelAnimationFrame(rafId);
+  if (srcNode)  srcNode.disconnect();
+  if (audioCtx) audioCtx.close();
+  listening = false;
+  lastNoteKey = null; stableFrames = 0; smoothFreq = null; smoothCents = null;
+  const btn = document.getElementById('startBtn');
+  btn.textContent = 'Ligar Microfone';
+  btn.classList.remove('active');
+  resetDisplay();
+  setStatus('Ligue o microfone para começar');
+}
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  listening ? stopListening() : startListening();
+});
+
+document.getElementById('transposeChk').addEventListener('change', e => {
+  transposeOn = e.target.checked;
+});
+
+function updateTuningDisplay() { document.getElementById('tuneVal').textContent = A4; }
+document.getElementById('tuneDown').addEventListener('click', () => { if (A4 > 430) { A4--; updateTuningDisplay(); } });
+document.getElementById('tuneUp').addEventListener('click',   () => { if (A4 < 450) { A4++; updateTuningDisplay(); } });
+
+// ═════════════════════════════════════════════════════════════
+//  Tab switching
+// ═════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tab));
+
+  const inGame = tab === 'game';
+  document.getElementById('tunerPanel').classList.toggle('visible', !inGame);
+  document.getElementById('gamePanel').classList.toggle('visible',  inGame);
+
+  // Hide tuner-only elements when in game mode
+  document.querySelectorAll('.t-only').forEach(el =>
+    el.classList.toggle('hidden', inGame));
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn =>
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+
+// ═════════════════════════════════════════════════════════════
+//  GAME ENGINE
+// ═════════════════════════════════════════════════════════════
+
+// ── Scale data (written pitch for Bb clarinet) ────────────────
+const ITVL = {
+  maj:      [0,2,4,5,7,9,11],
+  nat:      [0,2,3,5,7,8,10],
+  har:      [0,2,3,5,7,8,11],
+  mel:      [0,2,3,5,7,9,11],
+  dorian:   [0,2,3,5,7,9,10],
+  phrygian: [0,1,3,5,7,8,10],
+  lydian:   [0,2,4,6,7,9,11],
+  mixo:     [0,2,4,5,7,9,10],
+  locrian:  [0,1,3,5,6,8,10],
+};
+
+const ALL_SCALES = [
+  // ── Major (14 entries — enharmonic pairs for C♯/D♭ and F♯/G♭) ──────────────────────
+  { label: 'C Maior',          intervals: ITVL.maj, noteNames: ['C','D','E','F','G','A','B'],              rootMidi: 60, category: 'maj' },
+  { label: 'G Maior',          intervals: ITVL.maj, noteNames: ['G','A','B','C','D','E','F♯'],             rootMidi: 55, category: 'maj' },
+  { label: 'D Maior',          intervals: ITVL.maj, noteNames: ['D','E','F♯','G','A','B','C♯'],            rootMidi: 62, category: 'maj' },
+  { label: 'A Maior',          intervals: ITVL.maj, noteNames: ['A','B','C♯','D','E','F♯','G♯'],           rootMidi: 57, category: 'maj' },
+  { label: 'E Maior',          intervals: ITVL.maj, noteNames: ['E','F♯','G♯','A','B','C♯','D♯'],          rootMidi: 52, category: 'maj' },
+  { label: 'B Maior',          intervals: ITVL.maj, noteNames: ['B','C♯','D♯','E','F♯','G♯','A♯'],         rootMidi: 59, category: 'maj' },
+  { label: 'F♯ Maior',         intervals: ITVL.maj, noteNames: ['F♯','G♯','A♯','B','C♯','D♯','E♯'],        rootMidi: 54, category: 'maj' },
+  { label: 'G♭ Maior',         intervals: ITVL.maj, noteNames: ['G♭','A♭','B♭','C♭','D♭','E♭','F'],        rootMidi: 54, category: 'maj' },
+  { label: 'C♯ Maior',         intervals: ITVL.maj, noteNames: ['C♯','D♯','E♯','F♯','G♯','A♯','B♯'],       rootMidi: 61, category: 'maj' },
+  { label: 'D♭ Maior',         intervals: ITVL.maj, noteNames: ['D♭','E♭','F','G♭','A♭','B♭','C'],         rootMidi: 61, category: 'maj' },
+  { label: 'A♭ Maior',         intervals: ITVL.maj, noteNames: ['A♭','B♭','C','D♭','E♭','F','G'],          rootMidi: 56, category: 'maj' },
+  { label: 'E♭ Maior',         intervals: ITVL.maj, noteNames: ['E♭','F','G','A♭','B♭','C','D'],           rootMidi: 63, category: 'maj' },
+  { label: 'B♭ Maior',         intervals: ITVL.maj, noteNames: ['B♭','C','D','E♭','F','G','A'],            rootMidi: 58, category: 'maj' },
+  { label: 'F Maior',          intervals: ITVL.maj, noteNames: ['F','G','A','B♭','C','D','E'],              rootMidi: 53, category: 'maj' },
+
+  // ── Natural minor ────────────────────────────────────────────────────────────────────
+  { label: 'A Menor Natural',  intervals: ITVL.nat, noteNames: ['A','B','C','D','E','F','G'],              rootMidi: 57, category: 'nat' },
+  { label: 'E Menor Natural',  intervals: ITVL.nat, noteNames: ['E','F♯','G','A','B','C','D'],             rootMidi: 52, category: 'nat' },
+  { label: 'B Menor Natural',  intervals: ITVL.nat, noteNames: ['B','C♯','D','E','F♯','G','A'],            rootMidi: 59, category: 'nat' },
+  { label: 'F♯ Menor Natural', intervals: ITVL.nat, noteNames: ['F♯','G♯','A','B','C♯','D','E'],           rootMidi: 54, category: 'nat' },
+  { label: 'C♯ Menor Natural', intervals: ITVL.nat, noteNames: ['C♯','D♯','E','F♯','G♯','A','B'],          rootMidi: 61, category: 'nat' },
+  { label: 'G♯ Menor Natural', intervals: ITVL.nat, noteNames: ['G♯','A♯','B','C♯','D♯','E','F♯'],         rootMidi: 56, category: 'nat' },
+  { label: 'D Menor Natural',  intervals: ITVL.nat, noteNames: ['D','E','F','G','A','B♭','C'],             rootMidi: 62, category: 'nat' },
+  { label: 'G Menor Natural',  intervals: ITVL.nat, noteNames: ['G','A','B♭','C','D','E♭','F'],            rootMidi: 55, category: 'nat' },
+  { label: 'C Menor Natural',  intervals: ITVL.nat, noteNames: ['C','D','E♭','F','G','A♭','B♭'],           rootMidi: 60, category: 'nat' },
+  { label: 'F Menor Natural',  intervals: ITVL.nat, noteNames: ['F','G','A♭','B♭','C','D♭','E♭'],          rootMidi: 53, category: 'nat' },
+  { label: 'B♭ Menor Natural', intervals: ITVL.nat, noteNames: ['B♭','C','D♭','E♭','F','G♭','A♭'],         rootMidi: 58, category: 'nat' },
+  { label: 'E♭ Menor Natural', intervals: ITVL.nat, noteNames: ['E♭','F','G♭','A♭','B♭','C♭','D♭'],        rootMidi: 63, category: 'nat' },
+
+  // ── Harmonic minor ───────────────────────────────────────────────────────────────────
+  { label: 'A Menor Harmônica',  intervals: ITVL.har, noteNames: ['A','B','C','D','E','F','G♯'],            rootMidi: 57, category: 'har' },
+  { label: 'E Menor Harmônica',  intervals: ITVL.har, noteNames: ['E','F♯','G','A','B','C','D♯'],           rootMidi: 52, category: 'har' },
+  { label: 'B Menor Harmônica',  intervals: ITVL.har, noteNames: ['B','C♯','D','E','F♯','G','A♯'],          rootMidi: 59, category: 'har' },
+  { label: 'F♯ Menor Harmônica', intervals: ITVL.har, noteNames: ['F♯','G♯','A','B','C♯','D','E♯'],         rootMidi: 54, category: 'har' },
+  { label: 'C♯ Menor Harmônica', intervals: ITVL.har, noteNames: ['C♯','D♯','E','F♯','G♯','A','B♯'],        rootMidi: 61, category: 'har' },
+  { label: 'G♯ Menor Harmônica', intervals: ITVL.har, noteNames: ['G♯','A♯','B','C♯','D♯','E','G'],         rootMidi: 56, category: 'har' },
+  { label: 'D Menor Harmônica',  intervals: ITVL.har, noteNames: ['D','E','F','G','A','B♭','C♯'],           rootMidi: 62, category: 'har' },
+  { label: 'G Menor Harmônica',  intervals: ITVL.har, noteNames: ['G','A','B♭','C','D','E♭','F♯'],          rootMidi: 55, category: 'har' },
+  { label: 'C Menor Harmônica',  intervals: ITVL.har, noteNames: ['C','D','E♭','F','G','A♭','B'],           rootMidi: 60, category: 'har' },
+  { label: 'F Menor Harmônica',  intervals: ITVL.har, noteNames: ['F','G','A♭','B♭','C','D♭','E'],          rootMidi: 53, category: 'har' },
+  { label: 'B♭ Menor Harmônica', intervals: ITVL.har, noteNames: ['B♭','C','D♭','E♭','F','G♭','A'],         rootMidi: 58, category: 'har' },
+  { label: 'E♭ Menor Harmônica', intervals: ITVL.har, noteNames: ['E♭','F','G♭','A♭','B♭','C♭','D'],        rootMidi: 63, category: 'har' },
+
+  // ── Melodic minor ────────────────────────────────────────────────────────────────────
+  { label: 'A Menor Melódica',  intervals: ITVL.mel, noteNames: ['A','B','C','D','E','F♯','G♯'],            rootMidi: 57, category: 'mel' },
+  { label: 'E Menor Melódica',  intervals: ITVL.mel, noteNames: ['E','F♯','G','A','B','C♯','D♯'],           rootMidi: 52, category: 'mel' },
+  { label: 'B Menor Melódica',  intervals: ITVL.mel, noteNames: ['B','C♯','D','E','F♯','G♯','A♯'],          rootMidi: 59, category: 'mel' },
+  { label: 'F♯ Menor Melódica', intervals: ITVL.mel, noteNames: ['F♯','G♯','A','B','C♯','D♯','E♯'],         rootMidi: 54, category: 'mel' },
+  { label: 'C♯ Menor Melódica', intervals: ITVL.mel, noteNames: ['C♯','D♯','E','F♯','G♯','A♯','B♯'],        rootMidi: 61, category: 'mel' },
+  { label: 'G♯ Menor Melódica', intervals: ITVL.mel, noteNames: ['G♯','A♯','B','C♯','D♯','E♯','G'],         rootMidi: 56, category: 'mel' },
+  { label: 'D Menor Melódica',  intervals: ITVL.mel, noteNames: ['D','E','F','G','A','B','C♯'],             rootMidi: 62, category: 'mel' },
+  { label: 'G Menor Melódica',  intervals: ITVL.mel, noteNames: ['G','A','B♭','C','D','E','F♯'],            rootMidi: 55, category: 'mel' },
+  { label: 'C Menor Melódica',  intervals: ITVL.mel, noteNames: ['C','D','E♭','F','G','A','B'],             rootMidi: 60, category: 'mel' },
+  { label: 'F Menor Melódica',  intervals: ITVL.mel, noteNames: ['F','G','A♭','B♭','C','D','E'],            rootMidi: 53, category: 'mel' },
+  { label: 'B♭ Menor Melódica', intervals: ITVL.mel, noteNames: ['B♭','C','D♭','E♭','F','G','A'],           rootMidi: 58, category: 'mel' },
+  { label: 'E♭ Menor Melódica', intervals: ITVL.mel, noteNames: ['E♭','F','G♭','A♭','B♭','C','D'],          rootMidi: 63, category: 'mel' },
+
+  // ── Dorian [0,2,3,5,7,9,10] ─────────────────────────────────────────────────────────
+  { label: 'C Dórico',   intervals: ITVL.dorian, noteNames: ['C','D','E♭','F','G','A','B♭'],              rootMidi: 60, category: 'dorian' },
+  { label: 'D Dórico',   intervals: ITVL.dorian, noteNames: ['D','E','F','G','A','B','C'],                rootMidi: 62, category: 'dorian' },
+  { label: 'E Dórico',   intervals: ITVL.dorian, noteNames: ['E','F♯','G','A','B','C♯','D'],              rootMidi: 52, category: 'dorian' },
+  { label: 'F Dórico',   intervals: ITVL.dorian, noteNames: ['F','G','A♭','B♭','C','D','E♭'],             rootMidi: 53, category: 'dorian' },
+  { label: 'G Dórico',   intervals: ITVL.dorian, noteNames: ['G','A','B♭','C','D','E','F'],               rootMidi: 55, category: 'dorian' },
+  { label: 'A Dórico',   intervals: ITVL.dorian, noteNames: ['A','B','C','D','E','F♯','G'],               rootMidi: 57, category: 'dorian' },
+  { label: 'B Dórico',   intervals: ITVL.dorian, noteNames: ['B','C♯','D','E','F♯','G♯','A'],             rootMidi: 59, category: 'dorian' },
+  { label: 'F♯ Dórico',  intervals: ITVL.dorian, noteNames: ['F♯','G♯','A','B','C♯','D♯','E'],            rootMidi: 54, category: 'dorian' },
+  { label: 'C♯ Dórico',  intervals: ITVL.dorian, noteNames: ['C♯','D♯','E','F♯','G♯','A♯','B'],           rootMidi: 61, category: 'dorian' },
+  { label: 'A♭ Dórico',  intervals: ITVL.dorian, noteNames: ['A♭','B♭','C♭','D♭','E♭','F','G♭'],          rootMidi: 56, category: 'dorian' },
+  { label: 'E♭ Dórico',  intervals: ITVL.dorian, noteNames: ['E♭','F','G♭','A♭','B♭','C','D♭'],           rootMidi: 63, category: 'dorian' },
+  { label: 'B♭ Dórico',  intervals: ITVL.dorian, noteNames: ['B♭','C','D♭','E♭','F','G','A♭'],            rootMidi: 58, category: 'dorian' },
+
+  // ── Phrygian [0,1,3,5,7,8,10] ───────────────────────────────────────────────────────
+  { label: 'C Frígio',   intervals: ITVL.phrygian, noteNames: ['C','D♭','E♭','F','G','A♭','B♭'],        rootMidi: 60, category: 'phrygian' },
+  { label: 'D Frígio',   intervals: ITVL.phrygian, noteNames: ['D','E♭','F','G','A','B♭','C'],          rootMidi: 62, category: 'phrygian' },
+  { label: 'E Frígio',   intervals: ITVL.phrygian, noteNames: ['E','F','G','A','B','C','D'],             rootMidi: 52, category: 'phrygian' },
+  { label: 'F Frígio',   intervals: ITVL.phrygian, noteNames: ['F','G♭','A♭','B♭','C','D♭','E♭'],       rootMidi: 53, category: 'phrygian' },
+  { label: 'G Frígio',   intervals: ITVL.phrygian, noteNames: ['G','A♭','B♭','C','D','E♭','F'],         rootMidi: 55, category: 'phrygian' },
+  { label: 'A Frígio',   intervals: ITVL.phrygian, noteNames: ['A','B♭','C','D','E','F','G'],           rootMidi: 57, category: 'phrygian' },
+  { label: 'B Frígio',   intervals: ITVL.phrygian, noteNames: ['B','C','D','E','F♯','G','A'],           rootMidi: 59, category: 'phrygian' },
+  { label: 'F♯ Frígio',  intervals: ITVL.phrygian, noteNames: ['F♯','G','A','B','C♯','D','E'],          rootMidi: 54, category: 'phrygian' },
+  { label: 'C♯ Frígio',  intervals: ITVL.phrygian, noteNames: ['C♯','D','E','F♯','G♯','A','B'],         rootMidi: 61, category: 'phrygian' },
+  { label: 'G♯ Frígio',  intervals: ITVL.phrygian, noteNames: ['G♯','A','B','C♯','D♯','E','F♯'],        rootMidi: 56, category: 'phrygian' },
+  { label: 'D♯ Frígio',  intervals: ITVL.phrygian, noteNames: ['D♯','E','F♯','G♯','A♯','B','C♯'],       rootMidi: 63, category: 'phrygian' },
+  { label: 'B♭ Frígio',  intervals: ITVL.phrygian, noteNames: ['B♭','C♭','D♭','E♭','F','G♭','A♭'],      rootMidi: 58, category: 'phrygian' },
+
+  // ── Lydian [0,2,4,6,7,9,11] ─────────────────────────────────────────────────────────
+  { label: 'C Lídio',   intervals: ITVL.lydian, noteNames: ['C','D','E','F♯','G','A','B'],               rootMidi: 60, category: 'lydian' },
+  { label: 'D Lídio',   intervals: ITVL.lydian, noteNames: ['D','E','F♯','G♯','A','B','C♯'],             rootMidi: 62, category: 'lydian' },
+  { label: 'E Lídio',   intervals: ITVL.lydian, noteNames: ['E','F♯','G♯','A♯','B','C♯','D♯'],           rootMidi: 52, category: 'lydian' },
+  { label: 'F Lídio',   intervals: ITVL.lydian, noteNames: ['F','G','A','B','C','D','E'],                 rootMidi: 53, category: 'lydian' },
+  { label: 'G Lídio',   intervals: ITVL.lydian, noteNames: ['G','A','B','C♯','D','E','F♯'],              rootMidi: 55, category: 'lydian' },
+  { label: 'A Lídio',   intervals: ITVL.lydian, noteNames: ['A','B','C♯','D♯','E','F♯','G♯'],            rootMidi: 57, category: 'lydian' },
+  { label: 'B Lídio',   intervals: ITVL.lydian, noteNames: ['B','C♯','D♯','E♯','F♯','G♯','A♯'],          rootMidi: 59, category: 'lydian' },
+  { label: 'G♭ Lídio',  intervals: ITVL.lydian, noteNames: ['G♭','A♭','B♭','C','D♭','E♭','F'],           rootMidi: 54, category: 'lydian' },
+  { label: 'D♭ Lídio',  intervals: ITVL.lydian, noteNames: ['D♭','E♭','F','G','A♭','B♭','C'],            rootMidi: 61, category: 'lydian' },
+  { label: 'A♭ Lídio',  intervals: ITVL.lydian, noteNames: ['A♭','B♭','C','D','E♭','F','G'],             rootMidi: 56, category: 'lydian' },
+  { label: 'E♭ Lídio',  intervals: ITVL.lydian, noteNames: ['E♭','F','G','A','B♭','C','D'],              rootMidi: 63, category: 'lydian' },
+  { label: 'B♭ Lídio',  intervals: ITVL.lydian, noteNames: ['B♭','C','D','E','F','G','A'],               rootMidi: 58, category: 'lydian' },
+
+  // ── Mixolydian [0,2,4,5,7,9,10] ─────────────────────────────────────────────────────
+  { label: 'C Mixolídio',   intervals: ITVL.mixo, noteNames: ['C','D','E','F','G','A','B♭'],             rootMidi: 60, category: 'mixo' },
+  { label: 'D Mixolídio',   intervals: ITVL.mixo, noteNames: ['D','E','F♯','G','A','B','C'],             rootMidi: 62, category: 'mixo' },
+  { label: 'E Mixolídio',   intervals: ITVL.mixo, noteNames: ['E','F♯','G♯','A','B','C♯','D'],           rootMidi: 52, category: 'mixo' },
+  { label: 'F Mixolídio',   intervals: ITVL.mixo, noteNames: ['F','G','A','B♭','C','D','E♭'],            rootMidi: 53, category: 'mixo' },
+  { label: 'G Mixolídio',   intervals: ITVL.mixo, noteNames: ['G','A','B','C','D','E','F'],              rootMidi: 55, category: 'mixo' },
+  { label: 'A Mixolídio',   intervals: ITVL.mixo, noteNames: ['A','B','C♯','D','E','F♯','G'],            rootMidi: 57, category: 'mixo' },
+  { label: 'B Mixolídio',   intervals: ITVL.mixo, noteNames: ['B','C♯','D♯','E','F♯','G♯','A'],          rootMidi: 59, category: 'mixo' },
+  { label: 'F♯ Mixolídio',  intervals: ITVL.mixo, noteNames: ['F♯','G♯','A♯','B','C♯','D♯','E'],         rootMidi: 54, category: 'mixo' },
+  { label: 'D♭ Mixolídio',  intervals: ITVL.mixo, noteNames: ['D♭','E♭','F','G♭','A♭','B♭','C♭'],        rootMidi: 61, category: 'mixo' },
+  { label: 'A♭ Mixolídio',  intervals: ITVL.mixo, noteNames: ['A♭','B♭','C','D♭','E♭','F','G♭'],         rootMidi: 56, category: 'mixo' },
+  { label: 'E♭ Mixolídio',  intervals: ITVL.mixo, noteNames: ['E♭','F','G','A♭','B♭','C','D♭'],          rootMidi: 63, category: 'mixo' },
+  { label: 'B♭ Mixolídio',  intervals: ITVL.mixo, noteNames: ['B♭','C','D','E♭','F','G','A♭'],           rootMidi: 58, category: 'mixo' },
+
+  // ── Locrian [0,1,3,5,6,8,10] ────────────────────────────────────────────────────────
+  { label: 'B Lócrio',   intervals: ITVL.locrian, noteNames: ['B','C','D','E','F','G','A'],               rootMidi: 59, category: 'locrian' },
+  { label: 'F♯ Lócrio',  intervals: ITVL.locrian, noteNames: ['F♯','G','A','B','C','D','E'],              rootMidi: 54, category: 'locrian' },
+  { label: 'C♯ Lócrio',  intervals: ITVL.locrian, noteNames: ['C♯','D','E','F♯','G','A','B'],             rootMidi: 61, category: 'locrian' },
+  { label: 'G♯ Lócrio',  intervals: ITVL.locrian, noteNames: ['G♯','A','B','C♯','D','E','F♯'],            rootMidi: 56, category: 'locrian' },
+  { label: 'D♯ Lócrio',  intervals: ITVL.locrian, noteNames: ['D♯','E','F♯','G♯','A','B','C♯'],           rootMidi: 63, category: 'locrian' },
+  { label: 'A♯ Lócrio',  intervals: ITVL.locrian, noteNames: ['A♯','B','C♯','D♯','E','F♯','G♯'],          rootMidi: 58, category: 'locrian' },
+  { label: 'E Lócrio',   intervals: ITVL.locrian, noteNames: ['E','F','G','A','B♭','C','D'],              rootMidi: 52, category: 'locrian' },
+  { label: 'F Lócrio',   intervals: ITVL.locrian, noteNames: ['F','G♭','A♭','B♭','C♭','D♭','E♭'],         rootMidi: 53, category: 'locrian' },
+  { label: 'C Lócrio',   intervals: ITVL.locrian, noteNames: ['C','D♭','E♭','F','G♭','A♭','B♭'],          rootMidi: 60, category: 'locrian' },
+  { label: 'G Lócrio',   intervals: ITVL.locrian, noteNames: ['G','A♭','B♭','C','D♭','E♭','F'],           rootMidi: 55, category: 'locrian' },
+  { label: 'D Lócrio',   intervals: ITVL.locrian, noteNames: ['D','E♭','F','G','A♭','B♭','C'],            rootMidi: 62, category: 'locrian' },
+  { label: 'A Lócrio',   intervals: ITVL.locrian, noteNames: ['A','B♭','C','D','E♭','F','G'],             rootMidi: 57, category: 'locrian' },
+];
+
+// ── Chord data ────────────────────────────────────────────────
+const CHORD_TYPES = [
+  { key: 'maj',  label: 'Maior',   suffix: '',   intervals: [0,4,7] },
+  { key: 'min',  label: 'Menor',   suffix: 'm',  intervals: [0,3,7] },
+  { key: 'dim',  label: 'Dim',     suffix: '°',  intervals: [0,3,6] },
+  { key: 'aug',  label: 'Aug',     suffix: '+',  intervals: [0,4,8] },
+  { key: 'dom7', label: 'Dom 7',   suffix: '7',  intervals: [0,4,7,10] },
+  { key: 'maj7', label: 'Maior 7', suffix: '7M', intervals: [0,4,7,11] },
+  { key: 'min7', label: 'Menor 7', suffix: 'm7', intervals: [0,3,7,10] },
+  { key: 'dim7', label: 'Dim 7',   suffix: '°7', intervals: [0,3,6,9] },
+];
+const CHORD_ROOTS = [
+  { name: 'C',  midi: 60 }, { name: 'D♭', midi: 61 }, { name: 'D',  midi: 62 },
+  { name: 'E♭', midi: 63 }, { name: 'E',  midi: 64 }, { name: 'F',  midi: 65 },
+  { name: 'F♯', midi: 66 }, { name: 'G',  midi: 67 }, { name: 'A♭', midi: 68 },
+  { name: 'A',  midi: 69 }, { name: 'B♭', midi: 70 }, { name: 'B',  midi: 71 },
+];
+
+// ── Game state ────────────────────────────────────────────────
+const gs = {
+  active:     false,
+  completed:  false,
+  scale:      null,
+  chord:      null,
+  balls:      [],
+  nextBall:   0,
+  octaves:    1,
+  direction:  'updown',
+  startFrom:  'root',
+  easyMode:   true,
+  gameMode:   'random',   // 'random' | 'practice' | 'chord'
+  filters:    { maj: true, nat: true, har: true, mel: true,
+                dorian: false, phrygian: false, lydian: false, mixo: false, locrian: false },
+  chordFilters: { maj: true, min: true, dim: true, aug: true,
+                  dom7: true, maj7: true, min7: true, dim7: true },
+  lastCorrectKey: null,
+  mistakeAt:  0,
+  COOLDOWN:   1200,
+  wrongCandidate: { idx: -1, frames: 0 },
+  WRONG_FRAMES:   8,
+  scaleStartTime: 0,
+  GRACE_MS:   1500,
+  scaleHistory: [],
+};
+
+// ── Message pools ─────────────────────────────────────────────
+function buildScaleMsg(scale, octaves, direction) {
+  const name = `<strong>${scale.label}</strong>`;
+  const oct  = octaves === 1 ? 'uma oitava' : 'duas oitavas';
+  const dir  = direction === 'updown' ? 'subindo e descendo' : 'só subindo';
+  return rndFrom([
+    `Vamos tocar ${name}, ${oct}, ${dir}!`,
+    `Agora ${name} — ${oct}, ${dir}!`,
+    `Toque ${name}: ${oct}, ${dir}!`,
+    `Sua vez! ${name}, ${oct}, ${dir}.`,
+  ]);
+}
+const MSG_CORRECT = [
+  'Isso! Continue.', 'Boa!', 'Sim! Próxima nota.', 'É isso!', 'Lindo!',
+];
+const MSG_WRONG = [
+  'Opa — nota errada. Tente de novo.',
+  'Não foi. Concentre-se.',
+  'Nota errada! Você consegue.',
+  'Cuidado — ouça e tente de novo.',
+];
+const MSG_DONE = [
+  '🎉 Excelente! Escala completa!',
+  '🌟 Perfeito — muito bem!',
+  '🎊 Bravo! Arrasou!',
+  '👏 Que linda execução!',
+];
+function rndFrom(arr, arg) {
+  const v = arr[Math.floor(Math.random() * arr.length)];
+  return typeof v === 'function' ? v(arg) : v;
+}
+
+function setTeacher(html) {
+  document.getElementById('teacherMsg').innerHTML = html;
+}
+
+// ── Ball generation ───────────────────────────────────────────
+
+// Enumerate every note belonging to `scale` across MIDI 46-108
+function getAllScaleNotes(scale) {
+  const rootPC = scale.rootMidi % 12;
+  const notes  = [];
+  for (let midi = 46; midi <= 108; midi++) {
+    const pc     = midi % 12;
+    const degIdx = scale.intervals.findIndex(iv => (rootPC + iv) % 12 === pc);
+    if (degIdx >= 0) notes.push({ midi, pitchClass: pc, noteName: scale.noteNames[degIdx] });
+  }
+  return notes;
+}
+
+function generateBalls(scale, octaves, direction, startFrom) {
+  const all = getAllScaleNotes(scale);
+
+  // Determine starting MIDI
+  let startMidi;
+  if (startFrom === 'lowe') {
+    // Lowest scale note at or above E3 (MIDI 52 = lowest Bb clarinet note, written)
+    const first = all.find(n => n.midi >= 52);
+    startMidi = first ? first.midi : scale.rootMidi;
+  } else {
+    startMidi = scale.rootMidi;
+  }
+
+  const startIdx = all.findIndex(n => n.midi === startMidi);
+  const si       = startIdx >= 0 ? startIdx : 0;
+
+  // Slice ascending run: octaves × 7 intervals + the top root = octaves*7+1 notes
+  // Clone each object so ascending and descending never share the same reference
+  // (renderBalls mutates b.el, shared refs cause overwrite bugs)
+  const ascending = all.slice(si, si + octaves * 7 + 1).map(n => ({...n}));
+
+  if (direction === 'up') return ascending;
+
+  // ↑↓: ascending then descending (top note shared, not repeated)
+  const descending = [...ascending].reverse().slice(1).map(n => ({...n}));
+  return [...ascending, ...descending];
+}
+
+// ── Render ────────────────────────────────────────────────────
+function getBallRows(balls, octaves, direction) {
+  if (gs.gameMode === 'chord') return [balls];
+  const rows = [];
+  let idx = 0;
+  for (let o = 0; o < octaves; o++) {
+    const count = o === 0 ? 8 : 7;
+    rows.push(balls.slice(idx, idx + count));
+    idx += count;
+  }
+  if (direction === 'updown') {
+    for (let o = 0; o < octaves; o++) {
+      rows.push(balls.slice(idx, idx + 7));
+      idx += 7;
+    }
+  }
+  return rows;
+}
+
+function renderBalls() {
+  const wrap = document.getElementById('ballsWrap');
+  wrap.innerHTML = '';
+  const n  = gs.balls.length;
+  const sz = n <= 8 ? 'sz-lg' : n <= 20 ? 'sz-sm' : 'sz-xs';
+
+  getBallRows(gs.balls, gs.octaves, gs.direction).forEach(rowBalls => {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'ball-row';
+    rowBalls.forEach(b => {
+      const div = document.createElement('div');
+      div.className = `ball ${sz}`;
+      b.el = div;
+      rowDiv.appendChild(div);
+    });
+    wrap.appendChild(rowDiv);
+  });
+
+  refreshBalls();
+}
+
+function refreshBalls() {
+  gs.balls.forEach((b, i) => {
+    const el = b.el;
+    if (!el) return;
+    el.classList.remove('active', 'correct', 'wrong');
+
+    if (i < gs.nextBall) {
+      el.classList.add('correct');
+      el.textContent = b.noteName;
+    } else if (i === gs.nextBall && gs.active && !gs.completed) {
+      el.classList.add('active');
+      el.textContent = gs.easyMode ? b.noteName : '?';
+    } else {
+      el.textContent = gs.easyMode ? b.noteName : '';
+    }
+  });
+
+}
+
+// ── Core note check ───────────────────────────────────────────
+function gameCheckNote(writtenIdx) {
+  if (!gs.active || gs.completed || gs.nextBall >= gs.balls.length) return;
+
+  const expected = gs.balls[gs.nextBall];
+
+  if (writtenIdx === expected.pitchClass) {
+    // ── Correct note ──
+    gs.wrongCandidate = { idx: -1, frames: 0 };
+
+    const key = `${gs.nextBall}:${writtenIdx}`;
+    if (gs.lastCorrectKey === key) return;   // same hold, don't double-count
+    gs.lastCorrectKey = key;
+
+    expected.el.classList.remove('active', 'wrong');
+    expected.el.classList.add('correct');
+    expected.el.textContent = expected.noteName;
+    gs.nextBall++;
+
+    if (gs.nextBall >= gs.balls.length) {
+      gs.completed = true;
+      setTeacher(rndFrom(MSG_DONE));
+
+      // Auto-advance to next after a short pause
+      setTimeout(() => {
+        if (!gs.completed) return;
+        if (gs.gameMode === 'chord') {
+          requestNewChord();
+        } else if (gs.gameMode === 'practice') {
+          // Restart same scale
+          gs.balls = generateBalls(gs.scale, gs.octaves, gs.direction, gs.startFrom);
+          gs.nextBall = 0; gs.active = true; gs.completed = false;
+          gs.lastCorrectKey = null; gs.mistakeAt = 0;
+          gs.wrongCandidate = { idx: -1, frames: 0 };
+          gs.scaleStartTime = Date.now();
+          renderBalls();
+          setTeacher(buildScaleMsg(gs.scale, gs.octaves, gs.direction));
+        } else {
+          requestNewScale();
+        }
+      }, 2600);
+    } else {
+      refreshBalls();
+    }
+
+  } else {
+    // ── Wrong note — debounce before penalising ──
+    if (gs.wrongCandidate.idx === writtenIdx) {
+      gs.wrongCandidate.frames++;
+    } else {
+      gs.wrongCandidate = { idx: writtenIdx, frames: 1 };
+    }
+
+    if (gs.wrongCandidate.frames < gs.WRONG_FRAMES) return;
+
+    // Debounce threshold reached — count as mistake
+    const now = Date.now();
+    if (now - gs.scaleStartTime < gs.GRACE_MS) {
+      gs.wrongCandidate = { idx: -1, frames: 0 };
+      return;
+    }
+    if (now - gs.mistakeAt < gs.COOLDOWN) {
+      gs.wrongCandidate = { idx: -1, frames: 0 };
+      return;
+    }
+    gs.mistakeAt  = now;
+    gs.wrongCandidate = { idx: -1, frames: 0 };
+    gs.lastCorrectKey = null;
+
+    setTeacher(rndFrom(MSG_WRONG));
+
+    const activeEl = gs.balls[gs.nextBall]?.el;
+    if (activeEl) {
+      activeEl.classList.add('wrong');
+      setTimeout(() => {
+        activeEl.classList.remove('wrong');
+        refreshBalls();
+      }, 420);
+    }
+  }
+}
+
+// ── Active pool helpers ───────────────────────────────────────
+function getActiveScalePool() {
+  return ALL_SCALES.filter(s => gs.filters[s.category]);
+}
+
+function getActiveChordPool() {
+  const list = [];
+  CHORD_TYPES.forEach(ct => {
+    if (!gs.chordFilters[ct.key]) return;
+    CHORD_ROOTS.forEach(root => list.push({ type: ct, root }));
+  });
+  return list;
+}
+
+// ── Chord ball generation ─────────────────────────────────────
+function generateChordBalls(chord) {
+  return chord.type.intervals.map(iv => {
+    const midi = chord.root.midi + iv;
+    const pc   = midi % 12;
+    return { midi, pitchClass: pc, noteName: NOTE_FLAT[pc] };
+  });
+}
+
+// ── Request new chord ─────────────────────────────────────────
+function requestNewChord() {
+  const pool = getActiveChordPool();
+  if (pool.length === 0) {
+    setTeacher('Ative pelo menos um tipo de acorde em ⚙ configurações!');
+    return;
+  }
+  const histSet   = new Set(gs.scaleHistory.slice(-10));
+  const fresh     = pool.filter(c => !histSet.has(`${c.root.name}${c.type.suffix}`));
+  const finalPool = fresh.length > 0 ? fresh : pool;
+  gs.chord        = finalPool[Math.floor(Math.random() * finalPool.length)];
+
+  const chordLabel = `${gs.chord.root.name}${gs.chord.type.suffix}`;
+  gs.scaleHistory.push(chordLabel);
+  gs.balls         = generateChordBalls(gs.chord);
+  gs.nextBall      = 0;
+  gs.active        = true;
+  gs.completed     = false;
+  gs.lastCorrectKey  = null;
+  gs.mistakeAt       = 0;
+  gs.wrongCandidate  = { idx: -1, frames: 0 };
+  gs.scaleStartTime  = Date.now();
+
+  renderBalls();
+  document.getElementById('sbScaleName').textContent = chordLabel;
+  setTeacher(`Arpegiando o acorde de <strong>${chordLabel}</strong>!`);
+}
+
+// ── Practice select population ────────────────────────────────
+function populatePracticeSelect() {
+  const sel = document.getElementById('practiceSelect');
+  sel.innerHTML = '';
+  const groups = [
+    { key: 'maj',      label: 'Maior' },
+    { key: 'nat',      label: 'Menor Natural' },
+    { key: 'har',      label: 'Menor Harmônica' },
+    { key: 'mel',      label: 'Menor Melódica' },
+    { key: 'dorian',   label: 'Dórico' },
+    { key: 'phrygian', label: 'Frígio' },
+    { key: 'lydian',   label: 'Lídio' },
+    { key: 'mixo',     label: 'Mixolídio' },
+    { key: 'locrian',  label: 'Lócrio' },
+  ];
+  groups.forEach(g => {
+    const scales = ALL_SCALES.filter(s => s.category === g.key);
+    if (!scales.length) return;
+    const og = document.createElement('optgroup');
+    og.label = g.label;
+    scales.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.label;
+      opt.textContent = s.label;
+      og.appendChild(opt);
+    });
+    sel.appendChild(og);
+  });
+}
+
+// ── Switch game mode ──────────────────────────────────────────
+function switchGameMode(mode) {
+  gs.gameMode = mode;
+  const filterBar    = document.getElementById('filterBar');
+  const practicePick = document.getElementById('practicePick');
+  const octGrp       = document.getElementById('octaveGrp');
+  const dirGrp       = document.getElementById('dirGrp');
+  const startGrp     = document.getElementById('startGrp');
+  const newBtn       = document.getElementById('newScaleBtn');
+
+  // Filter bar: shown for random only
+  filterBar.classList.toggle('hidden', mode !== 'random');
+  // Practice picker: shown for practice only
+  practicePick.classList.toggle('hidden', mode !== 'practice');
+  // Scale shape options: hidden in chord mode
+  octGrp.classList.toggle('hidden', mode === 'chord');
+  dirGrp.classList.toggle('hidden', mode === 'chord');
+  startGrp.classList.toggle('hidden', mode === 'chord');
+  // New button: hidden in practice (practice has its own play button)
+  newBtn.classList.toggle('hidden', mode === 'practice');
+  newBtn.textContent = mode === 'chord' ? '▶ Novo Acorde' : '▶ Nova Escala';
+}
+
+// ── Request new scale ─────────────────────────────────────────
+function requestNewScale() {
+  const allPool = getActiveScalePool();
+  if (allPool.length === 0) {
+    setTeacher('Ative pelo menos uma categoria de escala!');
+    return;
+  }
+  const histSet   = new Set(gs.scaleHistory.slice(-10));
+  const pool      = allPool.filter(s => !histSet.has(s.label));
+  const finalPool = pool.length > 0 ? pool : allPool;
+  gs.scale         = finalPool[Math.floor(Math.random() * finalPool.length)];
+  gs.scaleHistory.push(gs.scale.label);
+  gs.balls         = generateBalls(gs.scale, gs.octaves, gs.direction, gs.startFrom);
+  gs.nextBall      = 0;
+  gs.active        = true;
+  gs.completed     = false;
+  gs.lastCorrectKey  = null;
+  gs.mistakeAt       = 0;
+  gs.wrongCandidate  = { idx: -1, frames: 0 };
+  gs.scaleStartTime  = Date.now();
+
+  renderBalls();
+
+  document.getElementById('sbScaleName').textContent = gs.scale.label;
+
+  setTeacher(buildScaleMsg(gs.scale, gs.octaves, gs.direction));
+}
+
+// ── Game options ──────────────────────────────────────────────
+function makeOptHandler(attr, onPick) {
+  document.querySelectorAll(`[${attr}]`).forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll(`[${attr}]`).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      onPick(btn.dataset[attr.replace('data-', '')]);
+    });
+  });
+}
+
+makeOptHandler('data-oct', val => {
+  gs.octaves = parseInt(val, 10);
+  if (gs.scale) requestNewScale();
+});
+
+makeOptHandler('data-dir', val => {
+  gs.direction = val;
+  if (gs.scale) requestNewScale();
+});
+
+makeOptHandler('data-start', val => {
+  gs.startFrom = val;
+  if (gs.scale) requestNewScale();
+});
+
+document.querySelectorAll('[data-mode]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    gs.easyMode = btn.dataset.mode === 'easy';
+    refreshBalls();
+  });
+});
+
+document.getElementById('newScaleBtn').addEventListener('click', () => {
+  if (!listening) {
+    setTeacher('Por favor, ligue o microfone primeiro!');
+    return;
+  }
+  if (gs.gameMode === 'chord') requestNewChord();
+  else requestNewScale();
+});
+
+// ── Mode bar ──────────────────────────────────────────────────
+document.querySelectorAll('[data-gmode]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-gmode]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    switchGameMode(btn.dataset.gmode);
+  });
+});
+
+// ── Scale filter toggles ──────────────────────────────────────
+document.querySelectorAll('[data-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.filter;
+    gs.filters[key] = !gs.filters[key];
+    btn.classList.toggle('active', gs.filters[key]);
+  });
+});
+
+// ── Chord type toggles (in settings panel) ───────────────────
+document.querySelectorAll('[data-chord]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.chord;
+    gs.chordFilters[key] = !gs.chordFilters[key];
+    btn.classList.toggle('active', gs.chordFilters[key]);
+  });
+});
+
+// ── Settings panel toggle ────────────────────────────────────
+document.getElementById('settingsBtn').addEventListener('click', () => {
+  const panel = document.getElementById('settingsPanel');
+  const btn   = document.getElementById('settingsBtn');
+  const open  = panel.classList.toggle('hidden');
+  btn.classList.toggle('open', !open);
+});
+
+// ── Practice mode ─────────────────────────────────────────────
+document.getElementById('startPracticeBtn').addEventListener('click', () => {
+  if (!listening) {
+    setTeacher('Por favor, ligue o microfone primeiro!');
+    return;
+  }
+  const label = document.getElementById('practiceSelect').value;
+  const scale = ALL_SCALES.find(s => s.label === label);
+  if (!scale) return;
+  gs.scale         = scale;
+  gs.scaleHistory.push(scale.label);
+  gs.balls         = generateBalls(scale, gs.octaves, gs.direction, gs.startFrom);
+  gs.nextBall      = 0;
+  gs.active        = true;
+  gs.completed     = false;
+  gs.lastCorrectKey  = null;
+  gs.mistakeAt       = 0;
+  gs.wrongCandidate  = { idx: -1, frames: 0 };
+  gs.scaleStartTime  = Date.now();
+  renderBalls();
+  document.getElementById('sbScaleName').textContent = scale.label;
+  setTeacher(buildScaleMsg(scale, gs.octaves, gs.direction));
+});
+
+// ── Boot ──────────────────────────────────────────────────────
+populatePracticeSelect();
+switchTab('game');
+</script>
+</body>
+</html>
