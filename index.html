@@ -488,6 +488,12 @@
       flex-shrink: 0;
       border: 2px solid var(--gold-dim);
       box-shadow: 0 0 0 1px rgba(201,168,76,0.15), 0 4px 12px rgba(0,0,0,0.5);
+      cursor: pointer;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .teacher-avatar:hover {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px rgba(201,168,76,0.4), 0 4px 16px rgba(0,0,0,0.6);
     }
     .teacher-body { flex: 1; min-width: 0; }
     .teacher-name {
@@ -760,7 +766,7 @@
   <!-- ── Header ─────────────────────────────────────── -->
   <header class="header">
     <div class="logo">
-      <span class="logo-text">Professor Alê</span>
+      <span class="logo-text" id="logoText">Professor Alê</span>
     </div>
     <div class="header-right">
       <button class="mic-btn" id="startBtn">Ligar Microfone</button>
@@ -860,11 +866,11 @@
   <!-- ══════════ GAME PANEL ══════════ -->
   <section id="gamePanel" class="panel">
 
-    <!-- Teacher (Alê) -->
+    <!-- Teacher -->
     <div class="teacher">
-      <img class="teacher-avatar" src="ale.png" alt="Professor Alê">
+      <img class="teacher-avatar" id="teacherAvatar" src="ale.png" alt="Professor Alê">
       <div class="teacher-body">
-        <div class="teacher-name">Alê</div>
+        <div class="teacher-name" id="teacherName">Alê</div>
         <div class="teacher-msg" id="teacherMsg">
           Selecione um modo e pressione <strong>Nova Escala</strong> para começar!
         </div>
@@ -1888,6 +1894,23 @@ document.getElementById('startPracticeBtn').addEventListener('click', () => {
   renderBalls();
   document.getElementById('sbScaleName').textContent = scale.label;
   setTeacher(buildScaleMsg(scale, gs.octaves, gs.direction));
+});
+
+// ── Professor switch ──────────────────────────────────────────
+const PROFESSORS = [
+  { id: 'ale',     img: 'ale.png',     alt: 'Professor Alê',      name: 'Alê',     title: 'Professor Alê',      pageTitle: 'Professor Alê — Treinador de Clarinete' },
+  { id: 'javiera', img: 'javiera.png', alt: 'Professora Javiera', name: 'Javiera', title: 'Professora Javiera', pageTitle: 'Professora Javiera — Treinadora de Clarinete' },
+];
+let currentProf = 0;
+
+document.getElementById('teacherAvatar').addEventListener('click', () => {
+  currentProf = (currentProf + 1) % PROFESSORS.length;
+  const p = PROFESSORS[currentProf];
+  document.getElementById('teacherAvatar').src = p.img;
+  document.getElementById('teacherAvatar').alt = p.alt;
+  document.getElementById('teacherName').textContent = p.name;
+  document.getElementById('logoText').textContent = p.title;
+  document.title = p.pageTitle;
 });
 
 // ── Boot ──────────────────────────────────────────────────────
