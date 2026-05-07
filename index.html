@@ -551,9 +551,18 @@
       user-select: none;
       flex-shrink: 0;
     }
-    .ball.sz-lg { width: min(52px, calc((100vw - 88px) / 8)); height: min(52px, calc((100vw - 88px) / 8)); font-size: clamp(0.6rem, 2.5vw, 0.76rem); }
-    .ball.sz-sm { width: min(44px, calc((100vw - 88px) / 8)); height: min(44px, calc((100vw - 88px) / 8)); font-size: clamp(0.54rem, 2.2vw, 0.66rem); }
-    .ball.sz-xs { width: min(36px, calc((100vw - 88px) / 8)); height: min(36px, calc((100vw - 88px) / 8)); font-size: clamp(0.48rem, 2vw, 0.6rem); }
+    .ball.sz-lg { width: min(52px, calc((100vw - 80px) / 5)); height: min(52px, calc((100vw - 80px) / 5)); font-size: clamp(0.6rem, 2.8vw, 0.76rem); }
+    .ball.sz-sm { width: min(44px, calc((100vw - 80px) / 9)); height: min(44px, calc((100vw - 80px) / 9)); font-size: clamp(0.52rem, 2.2vw, 0.66rem); }
+    .ball.sz-xs { width: min(34px, calc((100vw - 80px) / 9)); height: min(34px, calc((100vw - 80px) / 9)); font-size: clamp(0.44rem, 1.8vw, 0.58rem); }
+    .ball.marker {
+      border-color: rgba(201,168,76,0.25);
+      background: transparent;
+      box-shadow: none;
+      color: rgba(201,168,76,0.45);
+      font-size: 1rem;
+      cursor: default;
+      animation: none !important;
+    }
 
     .ball.active {
       border-color: var(--gold);
@@ -1513,40 +1522,28 @@ function generateBalls(scale, octaves, direction, startFrom) {
   // Clone each object so ascending and descending never share the same reference
   // (renderBalls mutates b.el, shared refs cause overwrite bugs)
   const ascending = all.slice(si, si + octaves * 7 + 1).map(n => ({...n}));
+  const mkUp   = () => ({ midi: -1, pitchClass: -1, noteName: '↑', isMarker: true });
+  const mkDown = () => ({ midi: -1, pitchClass: -1, noteName: '↓', isMarker: true });
 
-  if (direction === 'up') return ascending;
+  if (direction === 'up') return [mkUp(), ...ascending];
 
   // ↑↓: ascending then descending (top note shared, not repeated)
   const descending = [...ascending].reverse().slice(1).map(n => ({...n}));
-  return [...ascending, ...descending];
+  return [mkUp(), ...ascending, mkDown(), ...descending];
 }
 
 // ── Render ────────────────────────────────────────────────────
-function getBallRows(balls, octaves, direction) {
-  if (gs.gameMode === 'chord') return [balls];
-  const rows = [];
-  let idx = 0;
-  for (let o = 0; o < octaves; o++) {
-    const count = o === 0 ? 8 : 7;
-    rows.push(balls.slice(idx, idx + count));
-    idx += count;
-  }
-  if (direction === 'updown') {
-    for (let o = 0; o < octaves; o++) {
-      rows.push(balls.slice(idx, idx + 7));
-      idx += 7;
-    }
-  }
-  return rows;
+function getBallRows(balls) {
+  return [balls];
 }
 
 function renderBalls() {
   const wrap = document.getElementById('ballsWrap');
   wrap.innerHTML = '';
   const n  = gs.balls.length;
-  const sz = n <= 8 ? 'sz-lg' : n <= 20 ? 'sz-sm' : 'sz-xs';
+  const sz = n <= 6 ? 'sz-lg' : n <= 22 ? 'sz-sm' : 'sz-xs';
 
-  getBallRows(gs.balls, gs.octaves, gs.direction).forEach(rowBalls => {
+  getBallRows(gs.balls).forEach(rowBalls => {
     const rowDiv = document.createElement('div');
     rowDiv.className = 'ball-row';
     rowBalls.forEach(b => {
@@ -1567,6 +1564,12 @@ function refreshBalls() {
     if (!el) return;
     el.classList.remove('active', 'correct', 'wrong');
 
+    if (b.isMarker) {
+      el.classList.add('marker');
+      el.textContent = b.noteName;
+      return;
+    }
+
     if (i < gs.nextBall) {
       el.classList.add('correct');
       el.textContent = b.noteName;
@@ -1577,7 +1580,14 @@ function refreshBalls() {
       el.textContent = gs.easyMode ? b.noteName : '';
     }
   });
+}
 
+function skipMarkers() {
+  while (gs.nextBall < gs.balls.length && gs.balls[gs.nextBall].isMarker) {
+    const b = gs.balls[gs.nextBall];
+    if (b.el) { b.el.classList.add('marker'); b.el.textContent = b.noteName; }
+    gs.nextBall++;
+  }
 }
 
 // ── Core note check ───────────────────────────────────────────
@@ -1598,6 +1608,7 @@ function gameCheckNote(writtenIdx) {
     expected.el.classList.add('correct');
     expected.el.textContent = expected.noteName;
     gs.nextBall++;
+    skipMarkers();
 
     if (gs.nextBall >= gs.balls.length) {
       gs.completed = true;
@@ -1616,6 +1627,7 @@ function gameCheckNote(writtenIdx) {
           gs.wrongCandidate = { idx: -1, frames: 0 };
           gs.scaleStartTime = Date.now();
           renderBalls();
+          skipMarkers();
           setTeacher(buildScaleMsg(gs.scale, gs.octaves, gs.direction));
         } else {
           requestNewScale();
@@ -1789,6 +1801,7 @@ function requestNewScale() {
   gs.scaleStartTime  = Date.now();
 
   renderBalls();
+  skipMarkers();
 
   document.getElementById('sbScaleName').textContent = gs.scale.label;
 
@@ -1894,6 +1907,7 @@ document.getElementById('startPracticeBtn').addEventListener('click', () => {
   gs.wrongCandidate  = { idx: -1, frames: 0 };
   gs.scaleStartTime  = Date.now();
   renderBalls();
+  skipMarkers();
   document.getElementById('sbScaleName').textContent = scale.label;
   setTeacher(buildScaleMsg(scale, gs.octaves, gs.direction));
 });
