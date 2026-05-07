@@ -1673,7 +1673,8 @@ function generateChordBalls(chord) {
   return chord.type.intervals.map(iv => {
     const midi = chord.root.midi + iv;
     const pc   = midi % 12;
-    return { midi, pitchClass: pc, noteName: NOTE_FLAT[pc] };
+    const noteName = iv === 0 ? chord.root.name : NOTE_FLAT[pc];
+    return { midi, pitchClass: pc, noteName };
   });
 }
 
