@@ -524,7 +524,8 @@
     .ball-row {
       display: flex;
       justify-content: center;
-      gap: 8px;
+      gap: clamp(4px, 1.5vw, 8px);
+      flex-wrap: wrap;
     }
 
     .ball {
@@ -550,8 +551,9 @@
       user-select: none;
       flex-shrink: 0;
     }
-    .ball.sz-lg { width: 52px; height: 52px; font-size: 0.76rem; }
-    .ball.sz-sm { width: 44px; height: 44px; font-size: 0.66rem; }
+    .ball.sz-lg { width: min(52px, calc((100vw - 88px) / 8)); height: min(52px, calc((100vw - 88px) / 8)); font-size: clamp(0.6rem, 2.5vw, 0.76rem); }
+    .ball.sz-sm { width: min(44px, calc((100vw - 88px) / 8)); height: min(44px, calc((100vw - 88px) / 8)); font-size: clamp(0.54rem, 2.2vw, 0.66rem); }
+    .ball.sz-xs { width: min(36px, calc((100vw - 88px) / 8)); height: min(36px, calc((100vw - 88px) / 8)); font-size: clamp(0.48rem, 2vw, 0.6rem); }
 
     .ball.active {
       border-color: var(--gold);
