@@ -993,13 +993,8 @@ function chordNoteName(rootName, iv) {
   if (diff > 6)  diff -= 12;
   if (diff < -6) diff += 12;
   if (Math.abs(diff) >= 2) return NOTE_FLAT[tPC];
-  const acc    = diff === 1 ? '♯' : diff === -1 ? '♭' : '';
-  const result = tLetter + acc;
-  if (result === 'E♯') return 'F';
-  if (result === 'B♯') return 'C';
-  if (result === 'F♭') return 'E';
-  if (result === 'C♭') return 'B';
-  return result;
+  const acc = diff === 1 ? '♯' : diff === -1 ? '♭' : '';
+  return tLetter + acc;
 }
 
 const REGISTERS = [
