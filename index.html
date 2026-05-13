@@ -769,6 +769,57 @@
       flex-wrap: wrap;
       gap: 5px;
     }
+
+    /* ── Chord progression panel ──────────────────────── */
+    .chord-prog-panel {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 2px 0;
+    }
+    .chsub-row {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+    }
+    .chsub-btn {
+      padding: 5px 16px;
+      border: 1px solid var(--text-muted);
+      border-radius: 12px;
+      background: transparent;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.06em;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      cursor: pointer;
+    }
+    .chsub-btn.active {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: var(--gold-soft);
+    }
+    .chord-prog-selects {
+      display: flex;
+      gap: 8px;
+    }
+    .chord-prog-sel {
+      flex: 1;
+      background: var(--bg-raised);
+      border: 1px solid var(--text-muted);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      padding: 6px 8px;
+      outline: none;
+      transition: border-color 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .chord-prog-sel:focus { border-color: var(--gold); }
+    .chord-prog-sel option { background: var(--bg-card); }
   </style>
 </head>
 <body>
@@ -918,6 +969,18 @@
       <button class="play-btn" id="startPracticeBtn">▶ Tocar</button>
     </div>
 
+    <!-- Chord progression panel (chord mode only) -->
+    <div class="chord-prog-panel hidden" id="chordProgPanel">
+      <div class="chsub-row">
+        <button class="chsub-btn active" data-chsub="random">Aleatório</button>
+        <button class="chsub-btn" data-chsub="progression">Por tonalidade</button>
+      </div>
+      <div class="chord-prog-selects hidden" id="chordProgSelects">
+        <select id="chordKeySelect" class="chord-prog-sel"></select>
+        <select id="chordScaleSelect" class="chord-prog-sel"></select>
+      </div>
+    </div>
+
     <!-- Settings panel (chord type toggles, toggled by ⚙ button) -->
     <div class="settings-panel hidden" id="settingsPanel">
       <div class="settings-section-title">Tipos de acorde</div>
@@ -995,6 +1058,32 @@ function chordNoteName(rootName, iv) {
   if (Math.abs(diff) >= 2) return NOTE_FLAT[tPC];
   const acc = diff === 1 ? '♯' : diff === -1 ? '♭' : '';
   return tLetter + acc;
+}
+
+// Note name for a scale degree — degreeIndex (0-6) gives the correct letter
+function scaleDegreeNoteName(rootName, degreeIndex, semitones) {
+  const rootLetter  = rootName[0];
+  const rootAccStr  = rootName.slice(1);
+  const rootAccSemi = rootAccStr === '♯' ? 1 : rootAccStr === '♭' ? -1 : 0;
+  const rli         = CHORD_LETTERS.indexOf(rootLetter);
+  const rootNatPC   = CHORD_NAT_PCS[rli];
+  const rootPC      = (rootNatPC + rootAccSemi + 12) % 12;
+  const tli         = (rli + degreeIndex) % 7;
+  const tLetter     = CHORD_LETTERS[tli];
+  const tNatPC      = CHORD_NAT_PCS[tli];
+  const tPC         = (rootPC + semitones) % 12;
+  let diff          = tPC - tNatPC;
+  if (diff > 6)  diff -= 12;
+  if (diff < -6) diff += 12;
+  if (Math.abs(diff) >= 2) return NOTE_FLAT[tPC];
+  return tLetter + (diff === 1 ? '♯' : diff === -1 ? '♭' : '');
+}
+
+function getChordProgression(rootName, rootMidi, scaleKey) {
+  return ITVL[scaleKey].map((iv, deg) => ({
+    root: { name: scaleDegreeNoteName(rootName, deg, iv), midi: rootMidi + iv },
+    type: CHORD_TYPES.find(ct => ct.key === SCALE_HARMONIZATION[scaleKey][deg]),
+  }));
 }
 
 const REGISTERS = [
@@ -1302,6 +1391,31 @@ const ITVL = {
   locrian:  [0,1,3,5,6,8,10],
 };
 
+// Diatonic triad quality on each of the 7 scale degrees
+const SCALE_HARMONIZATION = {
+  maj:      ['maj','min','min','maj','maj','min','dim'],
+  nat:      ['min','dim','maj','min','min','maj','maj'],
+  har:      ['min','dim','aug','min','maj','maj','dim'],
+  mel:      ['min','min','aug','maj','maj','dim','dim'],
+  dorian:   ['min','min','maj','maj','min','dim','maj'],
+  phrygian: ['min','maj','maj','min','dim','maj','min'],
+  lydian:   ['maj','maj','min','dim','maj','min','min'],
+  mixo:     ['maj','min','dim','maj','min','min','maj'],
+  locrian:  ['dim','maj','min','min','maj','maj','min'],
+};
+
+const PROG_SCALE_TYPES = [
+  { key: 'maj',      label: 'Maior (Jônico)'         },
+  { key: 'dorian',   label: 'Dórico'                  },
+  { key: 'phrygian', label: 'Frígio'                  },
+  { key: 'lydian',   label: 'Lídio'                   },
+  { key: 'mixo',     label: 'Mixolídio'               },
+  { key: 'nat',      label: 'Menor Natural (Eólio)'   },
+  { key: 'locrian',  label: 'Lócrio'                  },
+  { key: 'har',      label: 'Menor Harmônica'         },
+  { key: 'mel',      label: 'Menor Melódica'          },
+];
+
 const ALL_SCALES = [
   // ── Major (14 entries — enharmonic pairs for C♯/D♭ and F♯/G♭) ──────────────────────
   { label: 'C Maior',          intervals: ITVL.maj, noteNames: ['C','D','E','F','G','A','B'],              rootMidi: 60, category: 'maj' },
@@ -1462,7 +1576,10 @@ const gs = {
   direction:  'updown',
   startFrom:  'root',
   easyMode:   true,
-  gameMode:   'random',   // 'random' | 'practice' | 'chord'
+  gameMode:      'random',   // 'random' | 'practice' | 'chord'
+  chordSubMode:  'random',   // 'random' | 'progression'
+  chordProgKey:  null,       // set on init
+  chordProgScale: 'maj',
   filters:    { maj: true, nat: true, har: true, mel: true,
                 dorian: false, phrygian: false, lydian: false, mixo: false, locrian: false },
   chordFilters: { maj: true, min: true, dim: true, aug: true,
@@ -1705,6 +1822,10 @@ function getActiveScalePool() {
 }
 
 function getActiveChordPool() {
+  if (gs.chordSubMode === 'progression' && gs.chordProgKey) {
+    return getChordProgression(gs.chordProgKey.name, gs.chordProgKey.midi, gs.chordProgScale)
+      .filter(c => c.type && gs.chordFilters[c.type.key]);
+  }
   const list = [];
   CHORD_TYPES.forEach(ct => {
     if (!gs.chordFilters[ct.key]) return;
@@ -1786,20 +1907,18 @@ function switchGameMode(mode) {
   gs.gameMode = mode;
   const filterBar    = document.getElementById('filterBar');
   const practicePick = document.getElementById('practicePick');
+  const chordProgPanel = document.getElementById('chordProgPanel');
   const octGrp       = document.getElementById('octaveGrp');
   const dirGrp       = document.getElementById('dirGrp');
   const startGrp     = document.getElementById('startGrp');
   const newBtn       = document.getElementById('newScaleBtn');
 
-  // Filter bar: shown for random only
   filterBar.classList.toggle('hidden', mode !== 'random');
-  // Practice picker: shown for practice only
   practicePick.classList.toggle('hidden', mode !== 'practice');
-  // Scale shape options: hidden in chord mode
+  chordProgPanel.classList.toggle('hidden', mode !== 'chord');
   octGrp.classList.toggle('hidden', mode === 'chord');
   dirGrp.classList.toggle('hidden', mode === 'chord');
   startGrp.classList.toggle('hidden', mode === 'chord');
-  // New button: hidden in practice (practice has its own play button)
   newBtn.classList.toggle('hidden', mode === 'practice');
   newBtn.textContent = mode === 'chord' ? '▶ Novo Acorde' : '▶ Nova Escala';
 }
@@ -1903,6 +2022,45 @@ document.querySelectorAll('[data-chord]').forEach(btn => {
     btn.classList.toggle('active', gs.chordFilters[key]);
   });
 });
+
+// ── Chord progression panel ──────────────────────────────────
+(function initChordProg() {
+  // Populate key select
+  const keySel = document.getElementById('chordKeySelect');
+  CHORD_ROOTS.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.name;
+    opt.textContent = r.name;
+    keySel.appendChild(opt);
+  });
+  gs.chordProgKey = CHORD_ROOTS[0];
+
+  // Populate scale type select
+  const scaleSel = document.getElementById('chordScaleSelect');
+  PROG_SCALE_TYPES.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.key;
+    opt.textContent = s.label;
+    scaleSel.appendChild(opt);
+  });
+
+  keySel.addEventListener('change', () => {
+    gs.chordProgKey = CHORD_ROOTS.find(r => r.name === keySel.value) || CHORD_ROOTS[0];
+  });
+  scaleSel.addEventListener('change', () => {
+    gs.chordProgScale = scaleSel.value;
+  });
+
+  document.querySelectorAll('[data-chsub]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-chsub]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      gs.chordSubMode = btn.dataset.chsub;
+      document.getElementById('chordProgSelects')
+        .classList.toggle('hidden', gs.chordSubMode !== 'progression');
+    });
+  });
+})();
 
 // ── Settings panel toggle ────────────────────────────────────
 document.getElementById('settingsBtn').addEventListener('click', () => {
