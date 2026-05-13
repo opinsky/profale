@@ -166,7 +166,7 @@
     }
     .sb-scale {
       font-family: var(--serif);
-      font-size: clamp(0.95rem, 4vw, 1.35rem);
+      font-size: clamp(1.4rem, 6vw, 2.1rem);
       font-weight: 600;
       color: var(--gold);
       letter-spacing: 0.01em;
@@ -551,9 +551,9 @@
       user-select: none;
       flex-shrink: 0;
     }
-    .ball.sz-lg { width: min(52px, calc((100vw - 80px) / 5)); height: min(52px, calc((100vw - 80px) / 5)); font-size: clamp(0.6rem, 2.8vw, 0.76rem); }
-    .ball.sz-sm { width: min(44px, calc((100vw - 80px) / 9)); height: min(44px, calc((100vw - 80px) / 9)); font-size: clamp(0.52rem, 2.2vw, 0.66rem); }
-    .ball.sz-xs { width: min(34px, calc((100vw - 80px) / 9)); height: min(34px, calc((100vw - 80px) / 9)); font-size: clamp(0.44rem, 1.8vw, 0.58rem); }
+    .ball.sz-lg { width: min(88px, calc((100vw - 64px) / 4)); height: min(88px, calc((100vw - 64px) / 4)); font-size: clamp(0.9rem, 4.5vw, 1.2rem); }
+    .ball.sz-sm { width: min(62px, calc((100vw - 64px) / 7)); height: min(62px, calc((100vw - 64px) / 7)); font-size: clamp(0.66rem, 3vw, 0.88rem); }
+    .ball.sz-xs { width: min(46px, calc((100vw - 64px) / 9)); height: min(46px, calc((100vw - 64px) / 9)); font-size: clamp(0.56rem, 2.2vw, 0.72rem); }
     .ball.marker {
       border-color: rgba(201,168,76,0.25);
       background: transparent;
@@ -632,7 +632,7 @@
       transition: background 0.15s, color 0.15s;
     }
     .gopt.active { background: var(--gold-soft); color: var(--gold); font-weight: 500; }
-    .ball.sz-xs { width: 36px; height: 36px; font-size: 0.56rem; }
+    .ball.sz-xs { width: 46px; height: 46px; font-size: 0.72rem; }
     .play-btn {
       background: var(--gold);
       color: #0e0b12;
@@ -970,7 +970,37 @@ const STABLE_NEEDED = 3;
 const CLR_MIN_HZ    = 130;
 const CLR_MAX_HZ    = 2600;
 
-const NOTE_FLAT = ['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'];
+const NOTE_FLAT  = ['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'];
+
+const CHORD_LETTERS   = ['C','D','E','F','G','A','B'];
+const CHORD_NAT_PCS   = [0, 2, 4, 5, 7, 9, 11];
+const CHORD_IV_STEPS  = [0, 1, 1, 2, 2, 3, 4, 4, 4, 6, 6, 6];
+
+function chordNoteName(rootName, iv) {
+  if (iv === 0) return rootName;
+  const rootLetter  = rootName[0];
+  const rootAccStr  = rootName.slice(1);
+  const rootAccSemi = rootAccStr === '♯' ? 1 : rootAccStr === '♭' ? -1 : 0;
+  const rli         = CHORD_LETTERS.indexOf(rootLetter);
+  const rootNatPC   = CHORD_NAT_PCS[rli];
+  const rootPC      = (rootNatPC + rootAccSemi + 12) % 12;
+  const steps       = CHORD_IV_STEPS[iv];
+  const tli         = (rli + steps) % 7;
+  const tLetter     = CHORD_LETTERS[tli];
+  const tNatPC      = CHORD_NAT_PCS[tli];
+  const tPC         = (rootPC + iv) % 12;
+  let diff          = tPC - tNatPC;
+  if (diff > 6)  diff -= 12;
+  if (diff < -6) diff += 12;
+  if (Math.abs(diff) >= 2) return NOTE_FLAT[tPC];
+  const acc    = diff === 1 ? '♯' : diff === -1 ? '♭' : '';
+  const result = tLetter + acc;
+  if (result === 'E♯') return 'F';
+  if (result === 'B♯') return 'C';
+  if (result === 'F♭') return 'E';
+  if (result === 'C♭') return 'B';
+  return result;
+}
 
 const REGISTERS = [
   { key: 'chalumeau', min: 130,  max: 280  },
@@ -1693,7 +1723,7 @@ function generateChordBalls(chord) {
   return chord.type.intervals.map(iv => {
     const midi = chord.root.midi + iv;
     const pc   = midi % 12;
-    const noteName = iv === 0 ? chord.root.name : NOTE_FLAT[pc];
+    const noteName = chordNoteName(chord.root.name, iv);
     return { midi, pitchClass: pc, noteName };
   });
 }
