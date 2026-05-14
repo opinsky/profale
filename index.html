@@ -1289,6 +1289,8 @@ function switchTab(tab) {
 document.querySelectorAll('.tab-btn').forEach(btn =>
   btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 
+switchTab('game');
+
 // ═════════════════════════════════════════════════════════════
 //  GAME ENGINE
 // ═════════════════════════════════════════════════════════════
