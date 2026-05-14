@@ -903,17 +903,6 @@
       <button class="filter-btn"        data-filter="locrian">Lócrio</button>
     </div>
 
-    <!-- Chord type filters (chords mode) -->
-    <div class="filter-bar hidden" id="chordFilterBar">
-      <button class="filter-btn active" data-chord="maj">Maior</button>
-      <button class="filter-btn active" data-chord="min">Menor</button>
-      <button class="filter-btn active" data-chord="dim">Dim</button>
-      <button class="filter-btn active" data-chord="aug">Aug</button>
-      <button class="filter-btn active" data-chord="dom7">Dom 7</button>
-      <button class="filter-btn active" data-chord="maj7">Maior 7</button>
-      <button class="filter-btn active" data-chord="min7">Menor 7</button>
-      <button class="filter-btn active" data-chord="dim7">Dim 7</button>
-    </div>
 
     <!-- Bottom game options bar -->
     <div class="game-bar">
@@ -1496,8 +1485,6 @@ const gs = {
   selectedKey: null,       // null = random; set to a CHORD_ROOTS entry for specific key
   filters:    { maj: true, nat: true, har: true, mel: true,
                 dorian: false, phrygian: false, lydian: false, mixo: false, locrian: false },
-  chordFilters: { maj: true, min: true, dim: true, aug: true,
-                  dom7: true, maj7: true, min7: true, dim7: true },
   lastCorrectKey: null,
   mistakeAt:  0,
   COOLDOWN:   1200,
@@ -1729,12 +1716,16 @@ function getActiveScalePool() {
 
 function getActiveChordPool() {
   const roots = gs.selectedKey ? [gs.selectedKey] : CHORD_ROOTS;
-  const list  = [];
-  CHORD_TYPES.forEach(ct => {
-    if (!gs.chordFilters[ct.key]) return;
-    roots.forEach(root => list.push({ type: ct, root }));
+  const pool  = [];
+  Object.keys(SCALE_HARMONIZATION).forEach(scaleKey => {
+    if (!gs.filters[scaleKey]) return;
+    roots.forEach(root => {
+      getChordProgression(root.name, root.midi, scaleKey)
+        .filter(c => c.type)
+        .forEach(c => pool.push(c));
+    });
   });
-  return list;
+  return pool;
 }
 
 // ── Chord ball generation ─────────────────────────────────────
@@ -1751,7 +1742,7 @@ function generateChordBalls(chord) {
 function requestNewChord() {
   const pool = getActiveChordPool();
   if (pool.length === 0) {
-    setTeacher('Ative pelo menos um tipo de acorde!');
+    setTeacher('Ative pelo menos um tipo de escala!');
     return;
   }
   const histSet   = new Set(gs.scaleHistory.slice(-10));
@@ -1778,8 +1769,6 @@ function requestNewChord() {
 // ── Switch game mode ──────────────────────────────────────────
 function switchGameMode(mode) {
   gs.gameMode = mode;
-  document.getElementById('scaleFilterBar').classList.toggle('hidden', mode !== 'scales');
-  document.getElementById('chordFilterBar').classList.toggle('hidden', mode !== 'chords');
   document.getElementById('octaveGrp').classList.toggle('hidden', mode === 'chords');
   document.getElementById('dirGrp').classList.toggle('hidden', mode === 'chords');
   document.getElementById('newBtn').textContent =
@@ -1887,14 +1876,6 @@ document.querySelectorAll('[data-filter]').forEach(btn => {
   });
 });
 
-// ── Chord type toggles ────────────────────────────────────────
-document.querySelectorAll('[data-chord]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const key = btn.dataset.chord;
-    gs.chordFilters[key] = !gs.chordFilters[key];
-    btn.classList.toggle('active', gs.chordFilters[key]);
-  });
-});
 
 // ── Professor switch ──────────────────────────────────────────
 const PROFESSORS = [
