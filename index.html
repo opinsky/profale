@@ -987,6 +987,7 @@ function getChordProgression(rootName, rootMidi, scaleKey) {
   return ITVL[scaleKey].map((iv, deg) => ({
     root: { name: scaleDegreeNoteName(rootName, deg, iv), midi: rootMidi + iv },
     type: CHORD_TYPES.find(ct => ct.key === SCALE_HARMONIZATION[scaleKey][deg]),
+    degree: deg,
   }));
 }
 
@@ -1297,17 +1298,17 @@ const ITVL = {
   locrian:  [0,1,3,5,6,8,10],
 };
 
-// Diatonic triad quality on each of the 7 scale degrees
+// Diatonic 7th chord quality on each of the 7 scale degrees
 const SCALE_HARMONIZATION = {
-  maj:      ['maj','min','min','maj','maj','min','dim'],
-  nat:      ['min','dim','maj','min','min','maj','maj'],
-  har:      ['min','dim','aug','min','maj','maj','dim'],
-  mel:      ['min','min','aug','maj','maj','dim','dim'],
-  dorian:   ['min','min','maj','maj','min','dim','maj'],
-  phrygian: ['min','maj','maj','min','dim','maj','min'],
-  lydian:   ['maj','maj','min','dim','maj','min','min'],
-  mixo:     ['maj','min','dim','maj','min','min','maj'],
-  locrian:  ['dim','maj','min','min','maj','maj','min'],
+  maj:      ['maj7',    'min7',    'min7',    'maj7',    'dom7', 'min7',    'm7b5'   ],
+  nat:      ['min7',    'm7b5',    'maj7',    'min7',    'min7', 'maj7',    'dom7'   ],
+  har:      ['minMaj7', 'm7b5',    'augMaj7', 'min7',    'dom7', 'maj7',    'dim7'   ],
+  mel:      ['minMaj7', 'min7',    'augMaj7', 'dom7',    'dom7', 'm7b5',    'm7b5'   ],
+  dorian:   ['min7',    'min7',    'maj7',    'dom7',    'min7', 'm7b5',    'maj7'   ],
+  phrygian: ['min7',    'maj7',    'dom7',    'min7',    'm7b5', 'maj7',    'min7'   ],
+  lydian:   ['maj7',    'dom7',    'min7',    'm7b5',    'maj7', 'min7',    'min7'   ],
+  mixo:     ['dom7',    'min7',    'm7b5',    'maj7',    'min7', 'min7',    'maj7'   ],
+  locrian:  ['m7b5',    'maj7',    'min7',    'min7',    'maj7', 'dom7',    'min7'   ],
 };
 
 const PROG_SCALE_TYPES = [
@@ -1454,14 +1455,17 @@ const ALL_SCALES = [
 
 // ── Chord data ────────────────────────────────────────────────
 const CHORD_TYPES = [
-  { key: 'maj',  label: 'Maior',   suffix: '',   intervals: [0,4,7] },
-  { key: 'min',  label: 'Menor',   suffix: 'm',  intervals: [0,3,7] },
-  { key: 'dim',  label: 'Dim',     suffix: '°',  intervals: [0,3,6] },
-  { key: 'aug',  label: 'Aug',     suffix: '+',  intervals: [0,4,8] },
-  { key: 'dom7', label: 'Dom 7',   suffix: '7',  intervals: [0,4,7,10] },
-  { key: 'maj7', label: 'Maior 7', suffix: '7M', intervals: [0,4,7,11] },
-  { key: 'min7', label: 'Menor 7', suffix: 'm7', intervals: [0,3,7,10] },
-  { key: 'dim7', label: 'Dim 7',   suffix: '°7', intervals: [0,3,6,9] },
+  { key: 'maj',     label: 'Maior',       suffix: '',      intervals: [0,4,7]    },
+  { key: 'min',     label: 'Menor',       suffix: 'm',     intervals: [0,3,7]    },
+  { key: 'dim',     label: 'Dim',         suffix: '°',     intervals: [0,3,6]    },
+  { key: 'aug',     label: 'Aug',         suffix: '+',     intervals: [0,4,8]    },
+  { key: 'dom7',    label: 'Dom 7',       suffix: '7',     intervals: [0,4,7,10] },
+  { key: 'maj7',    label: 'Maior 7',     suffix: '7M',    intervals: [0,4,7,11] },
+  { key: 'min7',    label: 'Menor 7',     suffix: 'm7',    intervals: [0,3,7,10] },
+  { key: 'dim7',    label: 'Dim 7',       suffix: '°7',    intervals: [0,3,6,9]  },
+  { key: 'm7b5',    label: 'Meio Dim 7',  suffix: 'ø7',    intervals: [0,3,6,10] },
+  { key: 'minMaj7', label: 'Men Maior 7', suffix: 'm(7M)', intervals: [0,3,7,11] },
+  { key: 'augMaj7', label: 'Aug Maior 7', suffix: '+(7M)', intervals: [0,4,8,11] },
 ];
 const CHORD_ROOTS = [
   { name: 'C',  midi: 60 }, { name: 'D♭', midi: 61 }, { name: 'D',  midi: 62 },
@@ -1714,6 +1718,19 @@ function getActiveScalePool() {
   return pool;
 }
 
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+const SCALE_LABELS = {
+  maj:      'Maior',
+  nat:      'Menor Natural',
+  har:      'Menor Harmônica',
+  mel:      'Menor Melódica',
+  dorian:   'Dórico',
+  phrygian: 'Frígio',
+  lydian:   'Lídio',
+  mixo:     'Mixolídio',
+  locrian:  'Lócrio',
+};
+
 function getActiveChordPool() {
   const roots = gs.selectedKey ? [gs.selectedKey] : CHORD_ROOTS;
   const pool  = [];
@@ -1722,7 +1739,7 @@ function getActiveChordPool() {
     roots.forEach(root => {
       getChordProgression(root.name, root.midi, scaleKey)
         .filter(c => c.type)
-        .forEach(c => pool.push(c));
+        .forEach(c => pool.push({ ...c, scaleRoot: root.name, scaleKey }));
     });
   });
   return pool;
@@ -1763,7 +1780,9 @@ function requestNewChord() {
 
   renderBalls();
   document.getElementById('sbScaleName').textContent = chordLabel;
-  setTeacher(`Arpegiando o acorde de <strong>${chordLabel}</strong>!`);
+  const roman      = ROMAN[gs.chord.degree];
+  const scaleLabel = SCALE_LABELS[gs.chord.scaleKey];
+  setTeacher(`Arpegiando <strong>${chordLabel}</strong> — grau ${roman} da escala de <strong>${gs.chord.scaleRoot} ${scaleLabel}</strong>`);
 }
 
 // ── Switch game mode ──────────────────────────────────────────
