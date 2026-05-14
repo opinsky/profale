@@ -1923,6 +1923,10 @@ document.querySelectorAll('[data-gmode]').forEach(btn => {
     document.querySelectorAll('[data-gmode]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     switchGameMode(btn.dataset.gmode);
+    if (listening) {
+      if (btn.dataset.gmode === 'chords') requestNewChord();
+      else requestNewScale();
+    }
   });
 });
 
