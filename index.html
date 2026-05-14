@@ -1723,7 +1723,7 @@ function gameCheckNote(writtenIdx) {
 // ── Active pool helpers ───────────────────────────────────────
 function getActiveScalePool() {
   let pool = ALL_SCALES.filter(s => gs.filters[s.category]);
-  if (gs.selectedKey) pool = pool.filter(s => s.rootMidi === gs.selectedKey.midi);
+  if (gs.selectedKey) pool = pool.filter(s => s.rootMidi % 12 === gs.selectedKey.midi % 12);
   return pool;
 }
 
