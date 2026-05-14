@@ -723,103 +723,37 @@
       background: var(--gold-soft);
     }
 
-    /* ── Practice picker ───────────────────────────── */
-    .practice-pick {
+    /* ── Key select row ────────────────────────────── */
+    .key-row {
       width: 100%;
       display: flex;
-      gap: 8px;
       align-items: center;
-    }
-    .practice-select {
-      flex: 1;
-      background: var(--bg-raised);
-      border: 1px solid var(--text-muted);
-      border-radius: 12px;
-      color: var(--text);
-      font-family: var(--mono);
-      font-size: 0.68rem;
-      padding: 6px 10px;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    .practice-select:focus { border-color: var(--gold); }
-    .practice-select option, .practice-select optgroup { background: var(--bg-card); }
-
-    /* ── Settings panel ────────────────────────────── */
-    .settings-panel {
-      width: 100%;
-      background: var(--bg-card);
-      border: 1px solid var(--gold-dim);
-      border-radius: 14px;
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
       gap: 10px;
     }
-    .settings-section-title {
+    .key-lbl {
       font-family: var(--mono);
-      font-size: 0.58rem;
-      letter-spacing: 0.15em;
+      font-size: 0.6rem;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: var(--gold);
-      opacity: 0.7;
-    }
-    .chord-filter-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-    }
-
-    /* ── Chord progression panel ──────────────────────── */
-    .chord-prog-panel {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      padding: 2px 0;
-    }
-    .chsub-row {
-      display: flex;
-      gap: 6px;
-      justify-content: center;
-    }
-    .chsub-btn {
-      padding: 5px 16px;
-      border: 1px solid var(--text-muted);
-      border-radius: 12px;
-      background: transparent;
       color: var(--text-dim);
-      font-family: var(--mono);
-      font-size: 0.62rem;
-      letter-spacing: 0.06em;
-      transition: border-color 0.15s, color 0.15s, background 0.15s;
-      cursor: pointer;
+      flex-shrink: 0;
     }
-    .chsub-btn.active {
-      border-color: var(--gold);
-      color: var(--gold);
-      background: var(--gold-soft);
-    }
-    .chord-prog-selects {
-      display: flex;
-      gap: 8px;
-    }
-    .chord-prog-sel {
+    .key-sel {
       flex: 1;
       background: var(--bg-raised);
       border: 1px solid var(--text-muted);
       border-radius: 10px;
       color: var(--text);
       font-family: var(--mono);
-      font-size: 0.65rem;
-      padding: 6px 8px;
+      font-size: 0.7rem;
+      padding: 6px 10px;
       outline: none;
       transition: border-color 0.2s;
       appearance: none;
       -webkit-appearance: none;
     }
-    .chord-prog-sel:focus { border-color: var(--gold); }
-    .chord-prog-sel option { background: var(--bg-card); }
+    .key-sel:focus { border-color: var(--gold); }
+    .key-sel option { background: var(--bg-card); }
   </style>
 </head>
 <body>
@@ -934,7 +868,7 @@
       <div class="teacher-body">
         <div class="teacher-name" id="teacherName">Alê</div>
         <div class="teacher-msg" id="teacherMsg">
-          Selecione um modo e pressione <strong>Nova Escala</strong> para começar!
+          Escolha Escalas ou Acordes e pressione o botão para começar!
         </div>
       </div>
     </div>
@@ -944,14 +878,20 @@
 
     <!-- Mode bar -->
     <div class="mode-bar">
-      <button class="mode-btn active" data-gmode="random">Aleatório</button>
-      <button class="mode-btn"        data-gmode="practice">Praticar</button>
-      <button class="mode-btn"        data-gmode="chord">Acordes</button>
-      <button class="mode-btn settings-btn" id="settingsBtn" title="Configurações de acordes">⚙</button>
+      <button class="mode-btn active" data-gmode="scales">Escalas</button>
+      <button class="mode-btn"        data-gmode="chords">Acordes</button>
     </div>
 
-    <!-- Scale filter toggles (random + practice modes) -->
-    <div class="filter-bar" id="filterBar">
+    <!-- Key select row -->
+    <div class="key-row">
+      <span class="key-lbl">Tonalidade</span>
+      <select id="keySelect" class="key-sel">
+        <option value="">Aleatória</option>
+      </select>
+    </div>
+
+    <!-- Scale type filters (scales mode) -->
+    <div class="filter-bar" id="scaleFilterBar">
       <button class="filter-btn active" data-filter="maj">Maior</button>
       <button class="filter-btn active" data-filter="nat">Men Nat</button>
       <button class="filter-btn active" data-filter="har">Men Har</button>
@@ -963,37 +903,16 @@
       <button class="filter-btn"        data-filter="locrian">Lócrio</button>
     </div>
 
-    <!-- Practice picker (practice mode only) -->
-    <div class="practice-pick hidden" id="practicePick">
-      <select id="practiceSelect" class="practice-select"></select>
-      <button class="play-btn" id="startPracticeBtn">▶ Tocar</button>
-    </div>
-
-    <!-- Chord progression panel (chord mode only) -->
-    <div class="chord-prog-panel hidden" id="chordProgPanel">
-      <div class="chsub-row">
-        <button class="chsub-btn active" data-chsub="random">Aleatório</button>
-        <button class="chsub-btn" data-chsub="progression">Por tonalidade</button>
-      </div>
-      <div class="chord-prog-selects hidden" id="chordProgSelects">
-        <select id="chordKeySelect" class="chord-prog-sel"></select>
-        <select id="chordScaleSelect" class="chord-prog-sel"></select>
-      </div>
-    </div>
-
-    <!-- Settings panel (chord type toggles, toggled by ⚙ button) -->
-    <div class="settings-panel hidden" id="settingsPanel">
-      <div class="settings-section-title">Tipos de acorde</div>
-      <div class="chord-filter-row">
-        <button class="filter-btn active" data-chord="maj">Maior</button>
-        <button class="filter-btn active" data-chord="min">Menor</button>
-        <button class="filter-btn active" data-chord="dim">Dim</button>
-        <button class="filter-btn active" data-chord="aug">Aug</button>
-        <button class="filter-btn active" data-chord="dom7">Dom 7</button>
-        <button class="filter-btn active" data-chord="maj7">Maior 7</button>
-        <button class="filter-btn active" data-chord="min7">Menor 7</button>
-        <button class="filter-btn active" data-chord="dim7">Dim 7</button>
-      </div>
+    <!-- Chord type filters (chords mode) -->
+    <div class="filter-bar hidden" id="chordFilterBar">
+      <button class="filter-btn active" data-chord="maj">Maior</button>
+      <button class="filter-btn active" data-chord="min">Menor</button>
+      <button class="filter-btn active" data-chord="dim">Dim</button>
+      <button class="filter-btn active" data-chord="aug">Aug</button>
+      <button class="filter-btn active" data-chord="dom7">Dom 7</button>
+      <button class="filter-btn active" data-chord="maj7">Maior 7</button>
+      <button class="filter-btn active" data-chord="min7">Menor 7</button>
+      <button class="filter-btn active" data-chord="dim7">Dim 7</button>
     </div>
 
     <!-- Bottom game options bar -->
@@ -1006,15 +925,11 @@
         <button class="gopt"        data-dir="up">↑</button>
         <button class="gopt active" data-dir="updown">↑↓</button>
       </div>
-      <div class="btn-grp" id="startGrp">
-        <button class="gopt active" data-start="root">Tônica</button>
-        <button class="gopt"        data-start="lowe">Mi grave</button>
-      </div>
       <div class="btn-grp">
         <button class="gopt active" data-mode="easy">Fácil</button>
         <button class="gopt"        data-mode="hard">Difícil</button>
       </div>
-      <button class="play-btn" id="newScaleBtn">▶ Nova Escala</button>
+      <button class="play-btn" id="newBtn">▶ Nova Escala</button>
     </div>
 
   </section>
@@ -1574,12 +1489,9 @@ const gs = {
   nextBall:   0,
   octaves:    1,
   direction:  'updown',
-  startFrom:  'root',
   easyMode:   true,
-  gameMode:      'random',   // 'random' | 'practice' | 'chord'
-  chordSubMode:  'random',   // 'random' | 'progression'
-  chordProgKey:  null,       // set on init
-  chordProgScale: 'maj',
+  gameMode:    'scales',   // 'scales' | 'chords'
+  selectedKey: null,       // null = random; set to a CHORD_ROOTS entry for specific key
   filters:    { maj: true, nat: true, har: true, mel: true,
                 dorian: false, phrygian: false, lydian: false, mixo: false, locrian: false },
   chordFilters: { maj: true, min: true, dim: true, aug: true,
@@ -1759,18 +1671,8 @@ function gameCheckNote(writtenIdx) {
       // Auto-advance to next after a short pause
       setTimeout(() => {
         if (!gs.completed) return;
-        if (gs.gameMode === 'chord') {
+        if (gs.gameMode === 'chords') {
           requestNewChord();
-        } else if (gs.gameMode === 'practice') {
-          // Restart same scale
-          gs.balls = generateBalls(gs.scale, gs.octaves, gs.direction, gs.startFrom);
-          gs.nextBall = 0; gs.active = true; gs.completed = false;
-          gs.lastCorrectKey = null; gs.mistakeAt = 0;
-          gs.wrongCandidate = { idx: -1, frames: 0 };
-          gs.scaleStartTime = Date.now();
-          renderBalls();
-          skipMarkers();
-          setTeacher(buildScaleMsg(gs.scale, gs.octaves, gs.direction));
         } else {
           requestNewScale();
         }
@@ -1818,18 +1720,17 @@ function gameCheckNote(writtenIdx) {
 
 // ── Active pool helpers ───────────────────────────────────────
 function getActiveScalePool() {
-  return ALL_SCALES.filter(s => gs.filters[s.category]);
+  let pool = ALL_SCALES.filter(s => gs.filters[s.category]);
+  if (gs.selectedKey) pool = pool.filter(s => s.rootMidi === gs.selectedKey.midi);
+  return pool;
 }
 
 function getActiveChordPool() {
-  if (gs.chordSubMode === 'progression' && gs.chordProgKey) {
-    return getChordProgression(gs.chordProgKey.name, gs.chordProgKey.midi, gs.chordProgScale)
-      .filter(c => c.type && gs.chordFilters[c.type.key]);
-  }
-  const list = [];
+  const roots = gs.selectedKey ? [gs.selectedKey] : CHORD_ROOTS;
+  const list  = [];
   CHORD_TYPES.forEach(ct => {
     if (!gs.chordFilters[ct.key]) return;
-    CHORD_ROOTS.forEach(root => list.push({ type: ct, root }));
+    roots.forEach(root => list.push({ type: ct, root }));
   });
   return list;
 }
@@ -1848,7 +1749,7 @@ function generateChordBalls(chord) {
 function requestNewChord() {
   const pool = getActiveChordPool();
   if (pool.length === 0) {
-    setTeacher('Ative pelo menos um tipo de acorde em ⚙ configurações!');
+    setTeacher('Ative pelo menos um tipo de acorde!');
     return;
   }
   const histSet   = new Set(gs.scaleHistory.slice(-10));
@@ -1872,55 +1773,15 @@ function requestNewChord() {
   setTeacher(`Arpegiando o acorde de <strong>${chordLabel}</strong>!`);
 }
 
-// ── Practice select population ────────────────────────────────
-function populatePracticeSelect() {
-  const sel = document.getElementById('practiceSelect');
-  sel.innerHTML = '';
-  const groups = [
-    { key: 'maj',      label: 'Maior' },
-    { key: 'nat',      label: 'Menor Natural' },
-    { key: 'har',      label: 'Menor Harmônica' },
-    { key: 'mel',      label: 'Menor Melódica' },
-    { key: 'dorian',   label: 'Dórico' },
-    { key: 'phrygian', label: 'Frígio' },
-    { key: 'lydian',   label: 'Lídio' },
-    { key: 'mixo',     label: 'Mixolídio' },
-    { key: 'locrian',  label: 'Lócrio' },
-  ];
-  groups.forEach(g => {
-    const scales = ALL_SCALES.filter(s => s.category === g.key);
-    if (!scales.length) return;
-    const og = document.createElement('optgroup');
-    og.label = g.label;
-    scales.forEach(s => {
-      const opt = document.createElement('option');
-      opt.value = s.label;
-      opt.textContent = s.label;
-      og.appendChild(opt);
-    });
-    sel.appendChild(og);
-  });
-}
-
 // ── Switch game mode ──────────────────────────────────────────
 function switchGameMode(mode) {
   gs.gameMode = mode;
-  const filterBar    = document.getElementById('filterBar');
-  const practicePick = document.getElementById('practicePick');
-  const chordProgPanel = document.getElementById('chordProgPanel');
-  const octGrp       = document.getElementById('octaveGrp');
-  const dirGrp       = document.getElementById('dirGrp');
-  const startGrp     = document.getElementById('startGrp');
-  const newBtn       = document.getElementById('newScaleBtn');
-
-  filterBar.classList.toggle('hidden', mode !== 'random');
-  practicePick.classList.toggle('hidden', mode !== 'practice');
-  chordProgPanel.classList.toggle('hidden', mode !== 'chord');
-  octGrp.classList.toggle('hidden', mode === 'chord');
-  dirGrp.classList.toggle('hidden', mode === 'chord');
-  startGrp.classList.toggle('hidden', mode === 'chord');
-  newBtn.classList.toggle('hidden', mode === 'practice');
-  newBtn.textContent = mode === 'chord' ? '▶ Novo Acorde' : '▶ Nova Escala';
+  document.getElementById('scaleFilterBar').classList.toggle('hidden', mode !== 'scales');
+  document.getElementById('chordFilterBar').classList.toggle('hidden', mode !== 'chords');
+  document.getElementById('octaveGrp').classList.toggle('hidden', mode === 'chords');
+  document.getElementById('dirGrp').classList.toggle('hidden', mode === 'chords');
+  document.getElementById('newBtn').textContent =
+    mode === 'chords' ? '▶ Novo Acorde' : '▶ Nova Escala';
 }
 
 // ── Request new scale ─────────────────────────────────────────
@@ -1935,7 +1796,7 @@ function requestNewScale() {
   const finalPool = pool.length > 0 ? pool : allPool;
   gs.scale         = finalPool[Math.floor(Math.random() * finalPool.length)];
   gs.scaleHistory.push(gs.scale.label);
-  gs.balls         = generateBalls(gs.scale, gs.octaves, gs.direction, gs.startFrom);
+  gs.balls         = generateBalls(gs.scale, gs.octaves, gs.direction, 'root');
   gs.nextBall      = 0;
   gs.active        = true;
   gs.completed     = false;
@@ -1973,11 +1834,6 @@ makeOptHandler('data-dir', val => {
   if (gs.scale) requestNewScale();
 });
 
-makeOptHandler('data-start', val => {
-  gs.startFrom = val;
-  if (gs.scale) requestNewScale();
-});
-
 document.querySelectorAll('[data-mode]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
@@ -1987,12 +1843,13 @@ document.querySelectorAll('[data-mode]').forEach(btn => {
   });
 });
 
-document.getElementById('newScaleBtn').addEventListener('click', () => {
+// ── Play button ───────────────────────────────────────────────
+document.getElementById('newBtn').addEventListener('click', () => {
   if (!listening) {
     setTeacher('Por favor, ligue o microfone primeiro!');
     return;
   }
-  if (gs.gameMode === 'chord') requestNewChord();
+  if (gs.gameMode === 'chords') requestNewChord();
   else requestNewScale();
 });
 
@@ -2005,6 +1862,20 @@ document.querySelectorAll('[data-gmode]').forEach(btn => {
   });
 });
 
+// ── Key select ────────────────────────────────────────────────
+(function initKeySelect() {
+  const sel = document.getElementById('keySelect');
+  CHORD_ROOTS.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.name;
+    opt.textContent = r.name;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change', () => {
+    gs.selectedKey = sel.value ? (CHORD_ROOTS.find(r => r.name === sel.value) || null) : null;
+  });
+})();
+
 // ── Scale filter toggles ──────────────────────────────────────
 document.querySelectorAll('[data-filter]').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -2014,85 +1885,13 @@ document.querySelectorAll('[data-filter]').forEach(btn => {
   });
 });
 
-// ── Chord type toggles (in settings panel) ───────────────────
+// ── Chord type toggles ────────────────────────────────────────
 document.querySelectorAll('[data-chord]').forEach(btn => {
   btn.addEventListener('click', () => {
     const key = btn.dataset.chord;
     gs.chordFilters[key] = !gs.chordFilters[key];
     btn.classList.toggle('active', gs.chordFilters[key]);
   });
-});
-
-// ── Chord progression panel ──────────────────────────────────
-(function initChordProg() {
-  // Populate key select
-  const keySel = document.getElementById('chordKeySelect');
-  CHORD_ROOTS.forEach(r => {
-    const opt = document.createElement('option');
-    opt.value = r.name;
-    opt.textContent = r.name;
-    keySel.appendChild(opt);
-  });
-  gs.chordProgKey = CHORD_ROOTS[0];
-
-  // Populate scale type select
-  const scaleSel = document.getElementById('chordScaleSelect');
-  PROG_SCALE_TYPES.forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s.key;
-    opt.textContent = s.label;
-    scaleSel.appendChild(opt);
-  });
-
-  keySel.addEventListener('change', () => {
-    gs.chordProgKey = CHORD_ROOTS.find(r => r.name === keySel.value) || CHORD_ROOTS[0];
-  });
-  scaleSel.addEventListener('change', () => {
-    gs.chordProgScale = scaleSel.value;
-  });
-
-  document.querySelectorAll('[data-chsub]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('[data-chsub]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      gs.chordSubMode = btn.dataset.chsub;
-      document.getElementById('chordProgSelects')
-        .classList.toggle('hidden', gs.chordSubMode !== 'progression');
-    });
-  });
-})();
-
-// ── Settings panel toggle ────────────────────────────────────
-document.getElementById('settingsBtn').addEventListener('click', () => {
-  const panel = document.getElementById('settingsPanel');
-  const btn   = document.getElementById('settingsBtn');
-  const open  = panel.classList.toggle('hidden');
-  btn.classList.toggle('open', !open);
-});
-
-// ── Practice mode ─────────────────────────────────────────────
-document.getElementById('startPracticeBtn').addEventListener('click', () => {
-  if (!listening) {
-    setTeacher('Por favor, ligue o microfone primeiro!');
-    return;
-  }
-  const label = document.getElementById('practiceSelect').value;
-  const scale = ALL_SCALES.find(s => s.label === label);
-  if (!scale) return;
-  gs.scale         = scale;
-  gs.scaleHistory.push(scale.label);
-  gs.balls         = generateBalls(scale, gs.octaves, gs.direction, gs.startFrom);
-  gs.nextBall      = 0;
-  gs.active        = true;
-  gs.completed     = false;
-  gs.lastCorrectKey  = null;
-  gs.mistakeAt       = 0;
-  gs.wrongCandidate  = { idx: -1, frames: 0 };
-  gs.scaleStartTime  = Date.now();
-  renderBalls();
-  skipMarkers();
-  document.getElementById('sbScaleName').textContent = scale.label;
-  setTeacher(buildScaleMsg(scale, gs.octaves, gs.direction));
 });
 
 // ── Professor switch ──────────────────────────────────────────
