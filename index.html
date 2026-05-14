@@ -701,7 +701,12 @@
     .filter-bar {
       width: 100%;
       display: flex;
-      flex-wrap: wrap;
+      flex-direction: column;
+      gap: 5px;
+      align-items: center;
+    }
+    .filter-row {
+      display: flex;
       gap: 5px;
       justify-content: center;
     }
@@ -722,6 +727,7 @@
       color: var(--gold);
       background: var(--gold-soft);
     }
+    .filter-btn:hover:not(.active) { border-color: var(--text-dim); color: var(--text); }
 
     /* ── Key toggle section ────────────────────────── */
     .key-section {
@@ -740,7 +746,12 @@
     .key-toggle-bar {
       width: 100%;
       display: flex;
-      flex-wrap: wrap;
+      flex-direction: column;
+      gap: 4px;
+      align-items: center;
+    }
+    .key-toggle-row {
+      display: flex;
       gap: 4px;
       justify-content: center;
     }
@@ -912,15 +923,21 @@
 
     <!-- Scale type filters (scales mode) -->
     <div class="filter-bar" id="scaleFilterBar">
-      <button class="filter-btn active" data-filter="maj">Maior</button>
-      <button class="filter-btn active" data-filter="nat">Men Nat</button>
-      <button class="filter-btn active" data-filter="har">Men Har</button>
-      <button class="filter-btn active" data-filter="mel">Men Mel</button>
-      <button class="filter-btn"        data-filter="dorian">Dórico</button>
-      <button class="filter-btn"        data-filter="phrygian">Frígio</button>
-      <button class="filter-btn"        data-filter="lydian">Lídio</button>
-      <button class="filter-btn"        data-filter="mixo">Mixolídio</button>
-      <button class="filter-btn"        data-filter="locrian">Lócrio</button>
+      <div class="filter-row">
+        <button class="filter-btn active" data-filter="maj">Maior</button>
+        <button class="filter-btn active" data-filter="nat">Men Nat</button>
+        <button class="filter-btn active" data-filter="har">Men Har</button>
+      </div>
+      <div class="filter-row">
+        <button class="filter-btn active" data-filter="mel">Men Mel</button>
+        <button class="filter-btn"        data-filter="dorian">Dórico</button>
+        <button class="filter-btn"        data-filter="phrygian">Frígio</button>
+      </div>
+      <div class="filter-row">
+        <button class="filter-btn"        data-filter="lydian">Lídio</button>
+        <button class="filter-btn"        data-filter="mixo">Mixolídio</button>
+        <button class="filter-btn"        data-filter="locrian">Lócrio</button>
+      </div>
     </div>
 
 
@@ -1523,7 +1540,7 @@ const gs = {
   direction:  'updown',
   easyMode:   true,
   gameMode:    'scales',   // 'scales' | 'chords'
-  selectedKey: null,       // null = random; set to a CHORD_ROOTS entry for specific key
+  selectedKeys: new Set(['C']),  // set of key names; always ≥ 1
   filters:    { maj: true, nat: true, har: true, mel: true,
                 dorian: false, phrygian: false, lydian: false, mixo: false, locrian: false },
   lastCorrectKey: null,
@@ -1751,7 +1768,7 @@ function gameCheckNote(writtenIdx) {
 // ── Active pool helpers ───────────────────────────────────────
 function getActiveScalePool() {
   let pool = ALL_SCALES.filter(s => gs.filters[s.category]);
-  if (gs.selectedKey) pool = pool.filter(s => s.noteNames[0] === gs.selectedKey.name);
+  pool = pool.filter(s => gs.selectedKeys.has(s.noteNames[0]));
   return pool;
 }
 
@@ -1769,7 +1786,7 @@ const SCALE_LABELS = {
 };
 
 function getActiveChordPool() {
-  const roots = gs.selectedKey ? [gs.selectedKey] : CHORD_ROOTS;
+  const roots = KEY_TOGGLES.filter(k => gs.selectedKeys.has(k.name));
   const pool  = [];
   Object.keys(SCALE_HARMONIZATION).forEach(scaleKey => {
     if (!gs.filters[scaleKey]) return;
@@ -1912,42 +1929,73 @@ document.querySelectorAll('[data-gmode]').forEach(btn => {
 // ── Key toggles ───────────────────────────────────────────────
 function initKeyToggles() {
   const bar = document.getElementById('keyToggleBar');
+  let todasBtn;
 
-  const randBtn = document.createElement('button');
-  randBtn.className = 'key-btn active';
-  randBtn.textContent = 'Aleat.';
-  randBtn.dataset.key = '';
-  bar.appendChild(randBtn);
+  function syncTodas() {
+    const allSelected = KEY_TOGGLES.every(k => gs.selectedKeys.has(k.name));
+    todasBtn.classList.toggle('active', allSelected);
+  }
 
-  KEY_GROUPS.forEach(group => {
-    if (group.length === 1) {
-      const btn = document.createElement('button');
-      btn.className = 'key-btn';
-      btn.textContent = group[0].name;
-      btn.dataset.key = group[0].name;
-      bar.appendChild(btn);
-    } else {
-      const grp = document.createElement('div');
-      grp.className = 'enhar-group';
-      group.forEach(k => {
-        const btn = document.createElement('button');
-        btn.className = 'key-btn';
-        btn.textContent = k.name;
-        btn.dataset.key = k.name;
-        grp.appendChild(btn);
-      });
-      bar.appendChild(grp);
-    }
-  });
+  function makeKeyBtn(k) {
+    const btn = document.createElement('button');
+    btn.className = 'key-btn' + (gs.selectedKeys.has(k.name) ? ' active' : '');
+    btn.textContent = k.name;
+    btn.dataset.key = k.name;
+    return btn;
+  }
+
+  function makeGroup(group) {
+    if (group.length === 1) return makeKeyBtn(group[0]);
+    const grp = document.createElement('div');
+    grp.className = 'enhar-group';
+    group.forEach(k => grp.appendChild(makeKeyBtn(k)));
+    return grp;
+  }
+
+  // Row 1: Todas + C through F (groups 0–5)
+  const row1 = document.createElement('div');
+  row1.className = 'key-toggle-row';
+  todasBtn = document.createElement('button');
+  todasBtn.className = 'key-btn';
+  todasBtn.textContent = 'Todas';
+  todasBtn.dataset.key = '__todas__';
+  row1.appendChild(todasBtn);
+  KEY_GROUPS.slice(0, 6).forEach(g => row1.appendChild(makeGroup(g)));
+  bar.appendChild(row1);
+
+  // Row 2: F♯|G♭ through B (groups 6–11)
+  const row2 = document.createElement('div');
+  row2.className = 'key-toggle-row';
+  KEY_GROUPS.slice(6).forEach(g => row2.appendChild(makeGroup(g)));
+  bar.appendChild(row2);
 
   bar.addEventListener('click', e => {
     const btn = e.target.closest('.key-btn');
     if (!btn) return;
-    bar.querySelectorAll('.key-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+
+    if (btn.dataset.key === '__todas__') {
+      KEY_TOGGLES.forEach(k => gs.selectedKeys.add(k.name));
+      bar.querySelectorAll('.key-btn[data-key]').forEach(b => {
+        if (b.dataset.key !== '__todas__') b.classList.add('active');
+      });
+      syncTodas();
+      return;
+    }
+
     const keyName = btn.dataset.key;
-    gs.selectedKey = keyName ? (KEY_TOGGLES.find(k => k.name === keyName) || null) : null;
+    if (gs.selectedKeys.has(keyName)) {
+      if (gs.selectedKeys.size > 1) {
+        gs.selectedKeys.delete(keyName);
+        btn.classList.remove('active');
+      }
+    } else {
+      gs.selectedKeys.add(keyName);
+      btn.classList.add('active');
+    }
+    syncTodas();
   });
+
+  syncTodas();
 }
 initKeyToggles();
 
