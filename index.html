@@ -723,12 +723,12 @@
       background: var(--gold-soft);
     }
 
-    /* ── Key select row ────────────────────────────── */
-    .key-row {
+    /* ── Key toggle section ────────────────────────── */
+    .key-section {
       width: 100%;
       display: flex;
-      align-items: center;
-      gap: 10px;
+      flex-direction: column;
+      gap: 5px;
     }
     .key-lbl {
       font-family: var(--mono);
@@ -736,24 +736,46 @@
       letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--text-dim);
-      flex-shrink: 0;
     }
-    .key-sel {
-      flex: 1;
-      background: var(--bg-raised);
+    .key-toggle-bar {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      justify-content: center;
+    }
+    .key-btn {
+      padding: 4px 8px;
+      min-width: 34px;
       border: 1px solid var(--text-muted);
       border-radius: 10px;
-      color: var(--text);
+      background: transparent;
+      color: var(--text-dim);
       font-family: var(--mono);
-      font-size: 0.7rem;
-      padding: 6px 10px;
-      outline: none;
-      transition: border-color 0.2s;
-      appearance: none;
-      -webkit-appearance: none;
+      font-size: 0.62rem;
+      letter-spacing: 0.03em;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      cursor: pointer;
+      text-align: center;
     }
-    .key-sel:focus { border-color: var(--gold); }
-    .key-sel option { background: var(--bg-card); }
+    .key-btn.active {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: var(--gold-soft);
+    }
+    .key-btn:hover:not(.active) { border-color: var(--text-dim); color: var(--text); }
+    .enhar-group {
+      display: flex;
+      gap: 1px;
+    }
+    .enhar-group .key-btn:first-child {
+      border-top-right-radius: 3px;
+      border-bottom-right-radius: 3px;
+    }
+    .enhar-group .key-btn:last-child {
+      border-top-left-radius: 3px;
+      border-bottom-left-radius: 3px;
+    }
   </style>
 </head>
 <body>
@@ -882,12 +904,10 @@
       <button class="mode-btn"        data-gmode="chords">Acordes</button>
     </div>
 
-    <!-- Key select row -->
-    <div class="key-row">
-      <span class="key-lbl">Tonalidade</span>
-      <select id="keySelect" class="key-sel">
-        <option value="">Aleatória</option>
-      </select>
+    <!-- Key toggle section -->
+    <div class="key-section">
+      <div class="key-lbl">Tonalidade</div>
+      <div class="key-toggle-bar" id="keyToggleBar"></div>
     </div>
 
     <!-- Scale type filters (scales mode) -->
@@ -1474,6 +1494,23 @@ const CHORD_ROOTS = [
   { name: 'A',  midi: 69 }, { name: 'B♭', midi: 70 }, { name: 'B',  midi: 71 },
 ];
 
+// Key toggle groups — enharmonic pairs are in the same sub-array
+const KEY_GROUPS = [
+  [{ name: 'C',  midi: 60 }],
+  [{ name: 'C♯', midi: 61 }, { name: 'D♭', midi: 61 }],
+  [{ name: 'D',  midi: 62 }],
+  [{ name: 'E♭', midi: 63 }],
+  [{ name: 'E',  midi: 64 }],
+  [{ name: 'F',  midi: 65 }],
+  [{ name: 'F♯', midi: 66 }, { name: 'G♭', midi: 66 }],
+  [{ name: 'G',  midi: 67 }],
+  [{ name: 'G♯', midi: 68 }, { name: 'A♭', midi: 68 }],
+  [{ name: 'A',  midi: 69 }],
+  [{ name: 'B♭', midi: 70 }],
+  [{ name: 'B',  midi: 71 }],
+];
+const KEY_TOGGLES = KEY_GROUPS.flat();
+
 // ── Game state ────────────────────────────────────────────────
 const gs = {
   active:     false,
@@ -1714,7 +1751,7 @@ function gameCheckNote(writtenIdx) {
 // ── Active pool helpers ───────────────────────────────────────
 function getActiveScalePool() {
   let pool = ALL_SCALES.filter(s => gs.filters[s.category]);
-  if (gs.selectedKey) pool = pool.filter(s => s.rootMidi % 12 === gs.selectedKey.midi % 12);
+  if (gs.selectedKey) pool = pool.filter(s => s.noteNames[0] === gs.selectedKey.name);
   return pool;
 }
 
@@ -1872,19 +1909,47 @@ document.querySelectorAll('[data-gmode]').forEach(btn => {
   });
 });
 
-// ── Key select ────────────────────────────────────────────────
-(function initKeySelect() {
-  const sel = document.getElementById('keySelect');
-  CHORD_ROOTS.forEach(r => {
-    const opt = document.createElement('option');
-    opt.value = r.name;
-    opt.textContent = r.name;
-    sel.appendChild(opt);
+// ── Key toggles ───────────────────────────────────────────────
+function initKeyToggles() {
+  const bar = document.getElementById('keyToggleBar');
+
+  const randBtn = document.createElement('button');
+  randBtn.className = 'key-btn active';
+  randBtn.textContent = 'Aleat.';
+  randBtn.dataset.key = '';
+  bar.appendChild(randBtn);
+
+  KEY_GROUPS.forEach(group => {
+    if (group.length === 1) {
+      const btn = document.createElement('button');
+      btn.className = 'key-btn';
+      btn.textContent = group[0].name;
+      btn.dataset.key = group[0].name;
+      bar.appendChild(btn);
+    } else {
+      const grp = document.createElement('div');
+      grp.className = 'enhar-group';
+      group.forEach(k => {
+        const btn = document.createElement('button');
+        btn.className = 'key-btn';
+        btn.textContent = k.name;
+        btn.dataset.key = k.name;
+        grp.appendChild(btn);
+      });
+      bar.appendChild(grp);
+    }
   });
-  sel.addEventListener('change', () => {
-    gs.selectedKey = sel.value ? (CHORD_ROOTS.find(r => r.name === sel.value) || null) : null;
+
+  bar.addEventListener('click', e => {
+    const btn = e.target.closest('.key-btn');
+    if (!btn) return;
+    bar.querySelectorAll('.key-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const keyName = btn.dataset.key;
+    gs.selectedKey = keyName ? (KEY_TOGGLES.find(k => k.name === keyName) || null) : null;
   });
-})();
+}
+initKeyToggles();
 
 // ── Scale filter toggles ──────────────────────────────────────
 document.querySelectorAll('[data-filter]').forEach(btn => {
